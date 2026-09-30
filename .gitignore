@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+docs/screenshots/
+test-results/
+playwright-report/
+samples/**/*.png
+samples/**/*.jpg
+samples/**/*.jpeg
+samples/**/*.webp
+__pycache__/
