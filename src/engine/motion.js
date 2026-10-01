@@ -7,11 +7,11 @@ const ALL_MOTIONS = { ...MOTIONS, ...IDLE_MOTIONS };
 // scales the head / body / arm tracks of idle motions (they are authored at full size, so 1)
 // (gaze, eyes and brows are left alone)
 export const IDLE_GAIN = { amp: 1, stiff: 1.8 };
-const IDLE_SCALED = /^Param(Angle|BodyAngle|ArmAngle|HandAngle)/;
+const IDLE_SCALED = /^(angle|bodyAngle|armAngle|handAngle)/;
 
 // motion tracks that replace the expression (the rest are additive or body targets)
-const FACE_TRACKS = new Set(['eyeOpen', 'eyeOpenL', 'eyeSmileL', 'ParamEyeSmile', 'ParamMouthOpenY',
-  'ParamMouthForm', 'ParamCheek', 'ParamBrowY', 'ParamBrowAngle']);
+const FACE_TRACKS = new Set(['eyeOpen', 'eyeOpenL', 'eyeSmileL', 'eyeSmile', 'mouthOpen',
+  'mouthForm', 'blush', 'browY', 'browAngle']);
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // smooth 1D value noise
@@ -26,18 +26,18 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export const EXPRESSIONS = {
   normal: { label: 'Neutral', p: {} },
-  smile: { label: 'Smile', p: { eyeOpen: 0, ParamEyeSmile: 1, ParamCheek: 0.35, ParamBrowY: 0.2 } },
-  shy: { label: 'Blush', p: { eyeOpen: 0.78, ParamEyeSmile: 0.5, ParamCheek: 1, ParamBrowAngle: -0.5, ParamBrowY: -0.1, glance: [0.7, 0.35] } },
-  jito: { label: 'Half-lidded', p: { eyeOpen: 0.5, ParamBrowY: -0.5, ParamBrowAngle: 0.6 } },
-  surprise: { label: 'Surprise', p: { eyeOpen: 1.22, ParamBrowY: 1, ParamMouthOpenY: 0.6, ParamMouthForm: 0.6 } },
-  wink: { label: 'Wink', p: { eyeOpenL: 0, eyeSmileL: 1, ParamCheek: 0.3 } },
+  smile: { label: 'Smile', p: { eyeOpen: 0, eyeSmile: 1, blush: 0.35, browY: 0.2 } },
+  shy: { label: 'Blush', p: { eyeOpen: 0.78, eyeSmile: 0.5, blush: 1, browAngle: -0.5, browY: -0.1, glance: [0.7, 0.35] } },
+  jito: { label: 'Half-lidded', p: { eyeOpen: 0.5, browY: -0.5, browAngle: 0.6 } },
+  surprise: { label: 'Surprise', p: { eyeOpen: 1.22, browY: 1, mouthOpen: 0.6, mouthForm: 0.6 } },
+  wink: { label: 'Wink', p: { eyeOpenL: 0, eyeSmileL: 1, blush: 0.3 } },
   // talking faces for AITuber OnAir emotion tags: eyes stay mostly open (closed / ^^ eyes are
   // what a single image fakes worst, and they would stay shut for a whole sentence)
-  happyTalk: { label: 'happy', p: { eyeOpen: 0.8, ParamEyeSmile: 0.45, ParamCheek: 0.35, ParamBrowY: 0.25, ParamMouthForm: -0.5 } },
-  sadTalk: { label: 'sad', p: { eyeOpen: 0.78, ParamBrowAngle: -0.8, ParamBrowY: -0.2, ParamMouthForm: 0.3, glance: [0, -0.35] } },
-  angryTalk: { label: 'angry', p: { eyeOpen: 0.72, ParamBrowAngle: 0.85, ParamBrowY: -0.55, ParamMouthForm: 0.2 } },
-  surprisedTalk: { label: 'surprised', p: { eyeOpen: 1.18, ParamBrowY: 0.9, ParamMouthForm: 0.9 } },
-  relaxedTalk: { label: 'relaxed', p: { eyeOpen: 0.82, ParamEyeSmile: 0.35, ParamCheek: 0.15, ParamBrowY: 0.1 } },
+  happyTalk: { label: 'happy', p: { eyeOpen: 0.8, eyeSmile: 0.45, blush: 0.35, browY: 0.25, mouthForm: -0.5 } },
+  sadTalk: { label: 'sad', p: { eyeOpen: 0.78, browAngle: -0.8, browY: -0.2, mouthForm: 0.3, glance: [0, -0.35] } },
+  angryTalk: { label: 'angry', p: { eyeOpen: 0.72, browAngle: 0.85, browY: -0.55, mouthForm: 0.2 } },
+  surprisedTalk: { label: 'surprised', p: { eyeOpen: 1.18, browY: 0.9, mouthForm: 0.9 } },
+  relaxedTalk: { label: 'relaxed', p: { eyeOpen: 0.82, eyeSmile: 0.35, blush: 0.15, browY: 0.1 } },
 };
 
 // emotion tag -> [expression, motion played when the line starts]
@@ -52,10 +52,10 @@ const EMOTIONS = {
 
 // [stiffness, damping ratio] of the parameter smoothing; unlisted params use [120, 0.95]
 const SPRINGS = {
-  ParamEyeBallX: [260, 0.9], ParamEyeBallY: [260, 0.9],
-  ParamAngleX: [55, 0.72], ParamAngleY: [55, 0.72], ParamAngleZ: [45, 0.75],
-  ParamBodyAngleX: [14, 0.9], ParamBodyAngleZ: [12, 0.9],
-  ParamArmAngle: [20, 0.85], ParamHandAngle: [30, 0.8],
+  gazeX: [260, 0.9], gazeY: [260, 0.9],
+  angleX: [55, 0.72], angleY: [55, 0.72], angleZ: [45, 0.75],
+  bodyAngleX: [14, 0.9], bodyAngleZ: [12, 0.9],
+  armAngle: [20, 0.85], handAngle: [30, 0.8],
 };
 
 export class Motion {
@@ -212,13 +212,13 @@ export class Motion {
       Object.assign(T, this.manual);
     } else if (this.mode === 'auto') {
       // wandering plus following the gaze: the eyes jump first, the head turns after them
-      T.ParamAngleX = fbm(t * 0.18, 1) * 10 + this.gaze.x * 11;
-      T.ParamAngleY = fbm(t * 0.15, 2) * 6 - 1 + this.gaze.y * 7;
-      T.ParamAngleZ = fbm(t * 0.12, 3) * 10;
-      T.ParamBodyAngleX = fbm(t * 0.1, 4) * 5;
-      T.ParamBodyAngleZ = fbm(t * 0.09, 5) * 4;
-      T.ParamArmAngle = fbm(t * 0.14, 6) * 5;
-      T.ParamHandAngle = fbm(t * 0.21, 7) * 5;
+      T.angleX = fbm(t * 0.18, 1) * 10 + this.gaze.x * 11;
+      T.angleY = fbm(t * 0.15, 2) * 6 - 1 + this.gaze.y * 7;
+      T.angleZ = fbm(t * 0.12, 3) * 10;
+      T.bodyAngleX = fbm(t * 0.1, 4) * 5;
+      T.bodyAngleZ = fbm(t * 0.09, 5) * 4;
+      T.armAngle = fbm(t * 0.14, 6) * 5;
+      T.handAngle = fbm(t * 0.21, 7) * 5;
       // glances
       if (t > this.gaze.next) {
         const r = Math.random();
@@ -226,8 +226,8 @@ export class Motion {
         this.gaze.y = r < 0.45 ? 0 : (Math.random() * 2 - 1) * 0.5;
         this.gaze.next = t + 0.8 + Math.random() * 2.5;
       }
-      T.ParamEyeBallX = this.gaze.x + T.ParamAngleX / 60;
-      T.ParamEyeBallY = this.gaze.y + T.ParamAngleY / 60;
+      T.gazeX = this.gaze.x + T.angleX / 60;
+      T.gazeY = this.gaze.y + T.angleY / 60;
       // occasional finger tapping on the chin
       if (t > this.tap.next) { this.tap.until = t + 1.1; this.tap.next = t + 5 + Math.random() * 6; }
       // random playback: reactions every ~15-25 s, small idle motions every few seconds in between
@@ -237,9 +237,9 @@ export class Motion {
         this.nextAuto = Math.max(this.nextAuto, t + 6);
         const g = this.talkGain;
         this.talkNod = (this.talkNod ?? 0) + (this.voice * 7 * g - (this.talkNod ?? 0)) * Math.min(1, dt * 6);
-        T.ParamAngleY -= this.talkNod;
-        T.ParamAngleX += fbm(t * 0.6, 11) * 5 * g;
-        T.ParamAngleZ += fbm(t * 0.5, 12) * 4 * g;
+        T.angleY -= this.talkNod;
+        T.angleX += fbm(t * 0.6, 11) * 5 * g;
+        T.angleZ += fbm(t * 0.5, 12) * 4 * g;
       }
       if (!this.speaking && t > this.emotionUntil) { this.expr = 'normal'; this.emotionUntil = Infinity; }
       if (this.speaking) { /* no random playback */ }
@@ -253,17 +253,17 @@ export class Motion {
       }
     } else if (this.mode === 'mouse' && this.pointer) {
       const dx = (this.pointer[0] - this.faceCenter[0]) / 500, dy = (this.pointer[1] - this.faceCenter[1]) / 500;
-      T.ParamAngleX = clamp(dx * 30, -30, 30);
-      T.ParamAngleY = clamp(-dy * 30, -30, 30);
-      T.ParamAngleZ = clamp(-dx * dy * 25, -12, 12);
-      T.ParamBodyAngleX = clamp(dx * 10, -10, 10) * 0.6;
-      T.ParamEyeBallX = clamp(dx * 1.4, -1, 1);
-      T.ParamEyeBallY = clamp(-dy * 1.4, -1, 1);
-      T.ParamHandAngle = clamp(dx * 4, -5, 5);
+      T.angleX = clamp(dx * 30, -30, 30);
+      T.angleY = clamp(-dy * 30, -30, 30);
+      T.angleZ = clamp(-dx * dy * 25, -12, 12);
+      T.bodyAngleX = clamp(dx * 10, -10, 10) * 0.6;
+      T.gazeX = clamp(dx * 1.4, -1, 1);
+      T.gazeY = clamp(-dy * 1.4, -1, 1);
+      T.handAngle = clamp(dx * 4, -5, 5);
     }
     if (this.mode !== 'manual') {
-      T.ParamBreath = this.breathValue(dt);
-      if (t < this.tap.until) T.ParamFingerTap = Math.max(0, Math.sin((this.tap.until - t) * Math.PI * 3.6)) ** 2;
+      T.breath = this.breathValue(dt);
+      if (t < this.tap.until) T.fingerTap = Math.max(0, Math.sin((this.tap.until - t) * Math.PI * 3.6)) ** 2;
     }
 
     // motion: body/head tracks go into the targets, so the springs smooth them too
@@ -279,20 +279,20 @@ export class Motion {
         mw = sstep(0, 0.15, this.play.t) * (1 - sstep(def.dur - 0.25, def.dur, this.play.t));
         for (const [id, v] of Object.entries(M)) {
           if (ADDITIVE.has(id)) T[id] += v;
-          else if (id === 'ParamBreath') T[id] += (v - T[id]) * mw;   // a motion sets its own breathing
+          else if (id === 'breath') T[id] += (v - T[id]) * mw;   // a motion sets its own breathing
           else if (!FACE_TRACKS.has(id)) T[id] = Math.max(T[id], Math.max(0, v));
         }
       }
     }
 
-    if (this.mode !== 'manual') T.ParamAngleY += T.ParamBreath * 1.6;
+    if (this.mode !== 'manual') T.angleY += T.breath * 1.6;
 
     // expression layer (smoothed so switching is not a jump)
     const E = EXPRESSIONS[this.expr].p;
-    const keys = ['eyeOpen', 'eyeOpenL', 'eyeSmileL', 'ParamEyeSmile', 'ParamMouthOpenY', 'ParamMouthForm', 'ParamCheek', 'ParamBrowY', 'ParamBrowAngle', 'gx', 'gy'];
-    const target = { eyeOpen: E.eyeOpen ?? 1, eyeOpenL: E.eyeOpenL ?? E.eyeOpen ?? 1, eyeSmileL: E.eyeSmileL ?? E.ParamEyeSmile ?? 0,
-      ParamEyeSmile: E.ParamEyeSmile ?? 0, ParamMouthOpenY: E.ParamMouthOpenY ?? 0, ParamMouthForm: E.ParamMouthForm ?? 0,
-      ParamCheek: E.ParamCheek ?? 0, ParamBrowY: E.ParamBrowY ?? 0, ParamBrowAngle: E.ParamBrowAngle ?? 0,
+    const keys = ['eyeOpen', 'eyeOpenL', 'eyeSmileL', 'eyeSmile', 'mouthOpen', 'mouthForm', 'blush', 'browY', 'browAngle', 'gx', 'gy'];
+    const target = { eyeOpen: E.eyeOpen ?? 1, eyeOpenL: E.eyeOpenL ?? E.eyeOpen ?? 1, eyeSmileL: E.eyeSmileL ?? E.eyeSmile ?? 0,
+      eyeSmile: E.eyeSmile ?? 0, mouthOpen: E.mouthOpen ?? 0, mouthForm: E.mouthForm ?? 0,
+      blush: E.blush ?? 0, browY: E.browY ?? 0, browAngle: E.browAngle ?? 0,
       gx: E.glance?.[0] ?? 0, gy: E.glance?.[1] ?? 0 };
     const k = 1 - Math.exp(-dt * 9);
     for (const key of keys) {
@@ -311,9 +311,9 @@ export class Motion {
       // keyframed motions are already smooth; follow them more tightly than idle wandering
       // keyframed motions are followed more tightly than the idle wandering; idle motions a
       // bit less so they stay soft but still reach their poses
-      if (M && /^ParamAngle|^ParamBody/.test(id)) {
+      if (M && /^angle|^body/.test(id)) {
         if (ALL_MOTIONS[this.play?.id ?? '']?.idle) { stiff *= IDLE_GAIN.stiff; zeta = 0.8; }
-        else if (/^ParamAngle/.test(id)) { stiff *= 4.5; zeta = 0.75; }
+        else if (/^angle/.test(id)) { stiff *= 4.5; zeta = 0.75; }
       }
       const damp = 2 * Math.sqrt(stiff) * zeta;
       this.vel[id] += (stiff * (T[id] - this.cur[id]) - damp * this.vel[id]) * dt;
@@ -323,38 +323,38 @@ export class Motion {
     let blink = 1;
     if (this.mode !== 'manual') {
       blink = this.blinkValue(dt);
-      out.ParamEyeROpen = X.eyeOpen * blink;
-      out.ParamEyeLOpen = X.eyeOpenL * blink;
-      out.ParamEyeSmile = X.ParamEyeSmile;
+      out.eyeROpen = X.eyeOpen * blink;
+      out.eyeLOpen = X.eyeOpenL * blink;
+      out.eyeSmile = X.eyeSmile;
       out.eyeSmileL = X.eyeSmileL;
-      out.ParamMouthOpenY = X.ParamMouthOpenY;
-      out.ParamMouthForm = X.ParamMouthForm;
-      out.ParamCheek = X.ParamCheek;
+      out.mouthOpen = X.mouthOpen;
+      out.mouthForm = X.mouthForm;
+      out.blush = X.blush;
       // brows dip a little with each blink and lift when looking up
-      out.ParamBrowY = X.ParamBrowY + (out.ParamAngleY > 0 ? out.ParamAngleY / 60 : 0) - (1 - blink) * 0.18;
-      out.ParamBrowAngle = X.ParamBrowAngle;
-      out.ParamEyeBallX = clamp(out.ParamEyeBallX + X.gx, -1, 1);
-      out.ParamEyeBallY = clamp(out.ParamEyeBallY + X.gy, -1, 1);
+      out.browY = X.browY + (out.angleY > 0 ? out.angleY / 60 : 0) - (1 - blink) * 0.18;
+      out.browAngle = X.browAngle;
+      out.gazeX = clamp(out.gazeX + X.gx, -1, 1);
+      out.gazeY = clamp(out.gazeY + X.gy, -1, 1);
     } else {
-      out.eyeSmileL = out.ParamEyeSmile;
+      out.eyeSmileL = out.eyeSmile;
     }
     if (M) {
       const mix = (key, v) => { out[key] += (v - out[key]) * mw; };
       const clampEye = v => Math.min(1.3, Math.max(0, v));
-      if ('eyeOpen' in M) { mix('ParamEyeROpen', clampEye(M.eyeOpen) * blink); if (!('eyeOpenL' in M)) mix('ParamEyeLOpen', clampEye(M.eyeOpen) * blink); }
-      if ('eyeOpenL' in M) mix('ParamEyeLOpen', clampEye(M.eyeOpenL) * blink);
-      if ('ParamEyeSmile' in M) { mix('ParamEyeSmile', M.ParamEyeSmile); if (!('eyeSmileL' in M)) mix('eyeSmileL', M.ParamEyeSmile); }
+      if ('eyeOpen' in M) { mix('eyeROpen', clampEye(M.eyeOpen) * blink); if (!('eyeOpenL' in M)) mix('eyeLOpen', clampEye(M.eyeOpen) * blink); }
+      if ('eyeOpenL' in M) mix('eyeLOpen', clampEye(M.eyeOpenL) * blink);
+      if ('eyeSmile' in M) { mix('eyeSmile', M.eyeSmile); if (!('eyeSmileL' in M)) mix('eyeSmileL', M.eyeSmile); }
       if ('eyeSmileL' in M) mix('eyeSmileL', M.eyeSmileL);
-      for (const id of ['ParamMouthOpenY', 'ParamMouthForm', 'ParamCheek', 'ParamBrowY', 'ParamBrowAngle'])
-        if (id in M) mix(id, id === 'ParamMouthOpenY' || id === 'ParamCheek' ? Math.max(0, M[id]) : M[id]);
+      for (const id of ['mouthOpen', 'mouthForm', 'blush', 'browY', 'browAngle'])
+        if (id in M) mix(id, id === 'mouthOpen' || id === 'blush' ? Math.max(0, M[id]) : M[id]);
     }
     const sm = this.speechMouth(dt);
     if (sm) { this.lipOpen = sm[0]; this.lipForm = sm[1]; }
     else if (this.lipOpen !== null && !this.speaking && !this.kana) this.lipOpen = null;
     if (this.lipOpen !== null) {
-      out.ParamMouthOpenY = Math.max(out.ParamMouthOpenY * 0.3, this.lipOpen);
+      out.mouthOpen = Math.max(out.mouthOpen * 0.3, this.lipOpen);
       // while talking the voice decides the vowel; the expression's form would shift it
-      out.ParamMouthForm = clamp(this.lipForm, -1, 1);
+      out.mouthForm = clamp(this.lipForm, -1, 1);
     }
     this.P = out;
     return out;

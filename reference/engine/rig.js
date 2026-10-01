@@ -5,25 +5,25 @@
 export const IMG = { w: 1254, h: 1254 };
 
 export const PARAMS = [
-  { id: 'ParamAngleX', label: '顔の向き 左右', min: -30, max: 30, def: 0, group: '頭と体' },
-  { id: 'ParamAngleY', label: '顔の向き 上下', min: -30, max: 30, def: 0, group: '頭と体' },
-  { id: 'ParamAngleZ', label: '顔の傾き', min: -30, max: 30, def: 0, group: '頭と体' },
-  { id: 'ParamBodyAngleX', label: '体の向き 左右', min: -10, max: 10, def: 0, group: '頭と体' },
-  { id: 'ParamBodyAngleZ', label: '体の傾き', min: -10, max: 10, def: 0, group: '頭と体' },
-  { id: 'ParamBreath', label: '呼吸', min: 0, max: 1, def: 0, group: '頭と体' },
-  { id: 'ParamEyeLOpen', label: '左目の開き', min: 0, max: 1.25, def: 1, group: '目と眉' },
-  { id: 'ParamEyeROpen', label: '右目の開き', min: 0, max: 1.25, def: 1, group: '目と眉' },
-  { id: 'ParamEyeSmile', label: '目の笑い', min: 0, max: 1, def: 0, group: '目と眉' },
-  { id: 'ParamEyeBallX', label: '目玉 左右', min: -1, max: 1, def: 0, group: '目と眉' },
-  { id: 'ParamEyeBallY', label: '目玉 上下', min: -1, max: 1, def: 0, group: '目と眉' },
-  { id: 'ParamBrowY', label: '眉 上下', min: -1, max: 1, def: 0, group: '目と眉' },
-  { id: 'ParamBrowAngle', label: '眉の角度', min: -1, max: 1, def: 0, group: '目と眉' },
-  { id: 'ParamMouthOpenY', label: '口の開き', min: 0, max: 1, def: 0, group: '口と頬' },
-  { id: 'ParamMouthForm', label: '口の形 (い↔お)', min: -1, max: 1, def: 0, group: '口と頬' },
-  { id: 'ParamCheek', label: '照れ', min: 0, max: 1, def: 0, group: '口と頬' },
-  { id: 'ParamArmAngle', label: '腕の角度', min: -10, max: 10, def: 0, group: '手' },
-  { id: 'ParamHandAngle', label: '手首の角度', min: -10, max: 10, def: 0, group: '手' },
-  { id: 'ParamFingerTap', label: '指トントン', min: 0, max: 1, def: 0, group: '手' },
+  { id: 'angleX', label: '顔の向き 左右', min: -30, max: 30, def: 0, group: '頭と体' },
+  { id: 'angleY', label: '顔の向き 上下', min: -30, max: 30, def: 0, group: '頭と体' },
+  { id: 'angleZ', label: '顔の傾き', min: -30, max: 30, def: 0, group: '頭と体' },
+  { id: 'bodyAngleX', label: '体の向き 左右', min: -10, max: 10, def: 0, group: '頭と体' },
+  { id: 'bodyAngleZ', label: '体の傾き', min: -10, max: 10, def: 0, group: '頭と体' },
+  { id: 'breath', label: '呼吸', min: 0, max: 1, def: 0, group: '頭と体' },
+  { id: 'eyeLOpen', label: '左目の開き', min: 0, max: 1.25, def: 1, group: '目と眉' },
+  { id: 'eyeROpen', label: '右目の開き', min: 0, max: 1.25, def: 1, group: '目と眉' },
+  { id: 'eyeSmile', label: '目の笑い', min: 0, max: 1, def: 0, group: '目と眉' },
+  { id: 'gazeX', label: '目玉 左右', min: -1, max: 1, def: 0, group: '目と眉' },
+  { id: 'gazeY', label: '目玉 上下', min: -1, max: 1, def: 0, group: '目と眉' },
+  { id: 'browY', label: '眉 上下', min: -1, max: 1, def: 0, group: '目と眉' },
+  { id: 'browAngle', label: '眉の角度', min: -1, max: 1, def: 0, group: '目と眉' },
+  { id: 'mouthOpen', label: '口の開き', min: 0, max: 1, def: 0, group: '口と頬' },
+  { id: 'mouthForm', label: '口の形 (い↔お)', min: -1, max: 1, def: 0, group: '口と頬' },
+  { id: 'blush', label: '照れ', min: 0, max: 1, def: 0, group: '口と頬' },
+  { id: 'armAngle', label: '腕の角度', min: -10, max: 10, def: 0, group: '手' },
+  { id: 'handAngle', label: '手首の角度', min: -10, max: 10, def: 0, group: '手' },
+  { id: 'fingerTap', label: '指トントン', min: 0, max: 1, def: 0, group: '手' },
 ];
 
 // ---- face features ----
@@ -194,20 +194,20 @@ function rotateAround(p, cx, cy, a) {
 
 // Head transform with weight w (0 = body, 1 = fully head). Mutates p.
 export function applyHead(p, w, P, wTurn = w) {
-  const o = turnOffset(p[0], p[1], P.ParamAngleX / 30, P.ParamAngleY / 30);
+  const o = turnOffset(p[0], p[1], P.angleX / 30, P.angleY / 30);
   p[0] += o[0] * wTurn; p[1] += o[1] * wTurn;
   if (w <= 0) return;
-  rotateAround(p, HEAD.pivotX, HEAD.pivotY, -P.ParamAngleZ / 30 * HEAD.maxRoll * w);
+  rotateAround(p, HEAD.pivotX, HEAD.pivotY, -P.angleZ / 30 * HEAD.maxRoll * w);
 }
 
 export function applyBody(p, restY, P, chest = 0, breathW = 1, shoulder = 0) {
-  const b = P.ParamBreath;
+  const b = P.breath;
   // inhale: everything above the cut-off rises, shoulders lift more, the chest widens a little
   p[1] -= b * (5 * breathW + 4 * shoulder);
   p[0] += (p[0] - 660) * 0.012 * b * chest;
-  p[0] += P.ParamBodyAngleX / 10 * (7 + 9 * chest);
+  p[0] += P.bodyAngleX / 10 * (7 + 9 * chest);
   // bottom rows stay put so no gap opens at the cut-off edge of the image
-  rotateAround(p, BODY.pivotX, BODY.pivotY, -P.ParamBodyAngleZ / 10 * BODY.maxRoll * (1 - sstep(950, 1254, restY)));
+  rotateAround(p, BODY.pivotX, BODY.pivotY, -P.bodyAngleZ / 10 * BODY.maxRoll * (1 - sstep(950, 1254, restY)));
 }
 
 // Base layer: hair and face-part offsets are added in rest space, then head, then body.
@@ -225,15 +225,15 @@ export function deformBase(x, y, w, P, phys, out) {
   p[0] += (phys.bunL[0] * w.bunL + phys.bunR[0] * w.bunR) * g;
   p[1] += (phys.bunL[1] * w.bunL + phys.bunR[1] * w.bunR) * g;
   // brows
-  p[1] -= P.ParamBrowY * 7 * w.brow;
+  p[1] -= P.browY * 7 * w.brow;
   if (w.brow > 0.01) {
-    const a = P.ParamBrowAngle * 0.12 * w.brow;
+    const a = P.browAngle * 0.12 * w.brow;
     p[1] += (x - 700) * Math.sin(a);
   }
-  p[1] += P.ParamMouthOpenY * 3.5 * w.jaw;
+  p[1] += P.mouthOpen * 3.5 * w.jaw;
   // head turn, per part: nose and mouth travel further than the eyes, the far eye
   // narrows and the near eye widens, the ears and buns slide the other way
-  const ax = P.ParamAngleX / 30, ay = P.ParamAngleY / 30;
+  const ax = P.angleX / 30, ay = P.angleY / 30;
   p[0] += ax * (8 * w.nose + 5 * w.mouth) + (x - 493) * 0.12 * ax * w.eyeA - (x - 713) * 0.12 * ax * w.eyeB
     - ax * 9 * w.earR + ax * 4 * w.earL - ax * 10 * (w.bunL + w.bunR);
   p[1] -= ay * (6 * w.nose + 3 * w.mouth);
@@ -283,8 +283,8 @@ export function handFrame(P) {
 export function deformHand(x, y, w, P, F, out) {
   let p = [x, y];
   // kept small on purpose: anything the hand uncovers is only a blurry inpaint
-  p = rot(p, KNUCKLE, Math.cos(P.ParamFingerTap * 0.07 * w.finger), Math.sin(P.ParamFingerTap * 0.07 * w.finger));
-  const ha = -P.ParamHandAngle / 10 * 0.045 * w.wrist, aa = -P.ParamArmAngle / 10 * 0.015 * w.arm;
+  p = rot(p, KNUCKLE, Math.cos(P.fingerTap * 0.07 * w.finger), Math.sin(P.fingerTap * 0.07 * w.finger));
+  const ha = -P.handAngle / 10 * 0.045 * w.wrist, aa = -P.armAngle / 10 * 0.015 * w.arm;
   p = rot(p, WRIST, Math.cos(ha), Math.sin(ha));
   p = rot(p, ELBOW, Math.cos(aa), Math.sin(aa));
   p = F.tr(p);

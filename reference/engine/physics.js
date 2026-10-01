@@ -57,7 +57,7 @@ export class Physics {
   step(P, dt) {
     const sub = Math.max(1, Math.ceil(dt / (1 / 240)));
     const h = Math.min(dt, 0.05) / sub;
-    const roll = -P.ParamAngleZ / 30 * 9 * Math.PI / 180 - P.ParamBodyAngleZ / 10 * 3 * Math.PI / 180;
+    const roll = -P.angleZ / 30 * 9 * Math.PI / 180 - P.bodyAngleZ / 10 * 3 * Math.PI / 180;
     const g = this.gain;
     const noSway = { gain: 0, bunL: [0, 0], bunR: [0, 0] };
 

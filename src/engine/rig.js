@@ -1,23 +1,23 @@
 export const PARAMS = [
-  { id: 'ParamAngleX', label: 'Face angle X', min: -30, max: 30, def: 0, group: 'Head and body' },
-  { id: 'ParamAngleY', label: 'Face angle Y', min: -30, max: 30, def: 0, group: 'Head and body' },
-  { id: 'ParamAngleZ', label: 'Face roll', min: -30, max: 30, def: 0, group: 'Head and body' },
-  { id: 'ParamBodyAngleX', label: 'Body angle X', min: -10, max: 10, def: 0, group: 'Head and body' },
-  { id: 'ParamBodyAngleZ', label: 'Body roll', min: -10, max: 10, def: 0, group: 'Head and body' },
-  { id: 'ParamBreath', label: 'Breath', min: 0, max: 1, def: 0, group: 'Head and body' },
-  { id: 'ParamEyeLOpen', label: 'Left eye open', min: 0, max: 1.25, def: 1, group: 'Eyes and brows' },
-  { id: 'ParamEyeROpen', label: 'Right eye open', min: 0, max: 1.25, def: 1, group: 'Eyes and brows' },
-  { id: 'ParamEyeSmile', label: 'Eye smile', min: 0, max: 1, def: 0, group: 'Eyes and brows' },
-  { id: 'ParamEyeBallX', label: 'Gaze X', min: -1, max: 1, def: 0, group: 'Eyes and brows' },
-  { id: 'ParamEyeBallY', label: 'Gaze Y', min: -1, max: 1, def: 0, group: 'Eyes and brows' },
-  { id: 'ParamBrowY', label: 'Brow Y', min: -1, max: 1, def: 0, group: 'Eyes and brows' },
-  { id: 'ParamBrowAngle', label: 'Brow angle', min: -1, max: 1, def: 0, group: 'Eyes and brows' },
-  { id: 'ParamMouthOpenY', label: 'Mouth open', min: 0, max: 1, def: 0, group: 'Mouth and cheeks' },
-  { id: 'ParamMouthForm', label: 'Mouth form (i to o)', min: -1, max: 1, def: 0, group: 'Mouth and cheeks' },
-  { id: 'ParamCheek', label: 'Blush', min: 0, max: 1, def: 0, group: 'Mouth and cheeks' },
-  { id: 'ParamArmAngle', label: 'Arm angle', min: -10, max: 10, def: 0, group: 'Hand' },
-  { id: 'ParamHandAngle', label: 'Wrist angle', min: -10, max: 10, def: 0, group: 'Hand' },
-  { id: 'ParamFingerTap', label: 'Finger tap', min: 0, max: 1, def: 0, group: 'Hand' },
+  { id: 'angleX', label: 'Face angle X', min: -30, max: 30, def: 0, group: 'Head and body' },
+  { id: 'angleY', label: 'Face angle Y', min: -30, max: 30, def: 0, group: 'Head and body' },
+  { id: 'angleZ', label: 'Face roll', min: -30, max: 30, def: 0, group: 'Head and body' },
+  { id: 'bodyAngleX', label: 'Body angle X', min: -10, max: 10, def: 0, group: 'Head and body' },
+  { id: 'bodyAngleZ', label: 'Body roll', min: -10, max: 10, def: 0, group: 'Head and body' },
+  { id: 'breath', label: 'Breath', min: 0, max: 1, def: 0, group: 'Head and body' },
+  { id: 'eyeLOpen', label: 'Left eye open', min: 0, max: 1.25, def: 1, group: 'Eyes and brows' },
+  { id: 'eyeROpen', label: 'Right eye open', min: 0, max: 1.25, def: 1, group: 'Eyes and brows' },
+  { id: 'eyeSmile', label: 'Eye smile', min: 0, max: 1, def: 0, group: 'Eyes and brows' },
+  { id: 'gazeX', label: 'Gaze X', min: -1, max: 1, def: 0, group: 'Eyes and brows' },
+  { id: 'gazeY', label: 'Gaze Y', min: -1, max: 1, def: 0, group: 'Eyes and brows' },
+  { id: 'browY', label: 'Brow Y', min: -1, max: 1, def: 0, group: 'Eyes and brows' },
+  { id: 'browAngle', label: 'Brow angle', min: -1, max: 1, def: 0, group: 'Eyes and brows' },
+  { id: 'mouthOpen', label: 'Mouth open', min: 0, max: 1, def: 0, group: 'Mouth and cheeks' },
+  { id: 'mouthForm', label: 'Mouth form (i to o)', min: -1, max: 1, def: 0, group: 'Mouth and cheeks' },
+  { id: 'blush', label: 'Blush', min: 0, max: 1, def: 0, group: 'Mouth and cheeks' },
+  { id: 'armAngle', label: 'Arm angle', min: -10, max: 10, def: 0, group: 'Hand' },
+  { id: 'handAngle', label: 'Wrist angle', min: -10, max: 10, def: 0, group: 'Hand' },
+  { id: 'fingerTap', label: 'Finger tap', min: 0, max: 1, def: 0, group: 'Hand' },
 ];
 
 // Reference algorithms are intentionally retained as JavaScript; the factory's rig input
@@ -181,20 +181,20 @@ export function createRig(rig) {
 
   // Head transform with weight w (0 = body, 1 = fully head). Mutates p.
   function applyHead(p, w, P, wTurn = w) {
-    const o = turnOffset(p[0], p[1], P.ParamAngleX / 30, P.ParamAngleY / 30);
+    const o = turnOffset(p[0], p[1], P.angleX / 30, P.angleY / 30);
     p[0] += o[0] * wTurn; p[1] += o[1] * wTurn;
     if (w <= 0) return;
-    rotateAround(p, HEAD.pivotX, HEAD.pivotY, -P.ParamAngleZ / 30 * HEAD.maxRoll * w);
+    rotateAround(p, HEAD.pivotX, HEAD.pivotY, -P.angleZ / 30 * HEAD.maxRoll * w);
   }
 
   function applyBody(p, restY, P, chest = 0, breathW = 1, shoulder = 0) {
-    const b = P.ParamBreath;
+    const b = P.breath;
     // inhale: everything above the cut-off rises, shoulders lift more, the chest widens a little
     p[1] -= b * (5 * breathW + 4 * shoulder);
     p[0] += (p[0] - BODY.chest.cx) * 0.012 * b * chest;
-    p[0] += P.ParamBodyAngleX / 10 * (7 + 9 * chest);
+    p[0] += P.bodyAngleX / 10 * (7 + 9 * chest);
     // bottom rows stay put so no gap opens at the cut-off edge of the image
-    rotateAround(p, BODY.pivotX, BODY.pivotY, -P.ParamBodyAngleZ / 10 * BODY.maxRoll * (1 - sstep(...BODY.rollBand, restY)));
+    rotateAround(p, BODY.pivotX, BODY.pivotY, -P.bodyAngleZ / 10 * BODY.maxRoll * (1 - sstep(...BODY.rollBand, restY)));
   }
 
   // Base layer: hair and face-part offsets are added in rest space, then head, then body.
@@ -212,15 +212,15 @@ export function createRig(rig) {
     p[0] += (phys.bunL[0] * w.bunL + phys.bunR[0] * w.bunR) * g;
     p[1] += (phys.bunL[1] * w.bunL + phys.bunR[1] * w.bunR) * g;
     // brows
-    p[1] -= P.ParamBrowY * 7 * w.brow;
+    p[1] -= P.browY * 7 * w.brow;
     if (w.brow > 0.01) {
-      const a = P.ParamBrowAngle * 0.12 * w.brow;
+      const a = P.browAngle * 0.12 * w.brow;
       p[1] += (x - rig.face.brow.cx) * Math.sin(a);
     }
-    p[1] += P.ParamMouthOpenY * 3.5 * w.jaw;
+    p[1] += P.mouthOpen * 3.5 * w.jaw;
     // head turn, per part: nose and mouth travel further than the eyes, the far eye
     // narrows and the near eye widens, the ears and buns slide the other way
-    const ax = P.ParamAngleX / 30, ay = P.ParamAngleY / 30;
+    const ax = P.angleX / 30, ay = P.angleY / 30;
     p[0] += ax * (8 * w.nose + 5 * w.mouth) + (x - rig.face.eyeA.cx) * 0.12 * ax * w.eyeA - (x - rig.face.eyeB.cx) * 0.12 * ax * w.eyeB
       - ax * 9 * w.earR + ax * 4 * w.earL - ax * 10 * (w.bunL + w.bunR);
     p[1] -= ay * (6 * w.nose + 3 * w.mouth);
@@ -273,8 +273,8 @@ export function createRig(rig) {
   function deformHand(x, y, w, P, F, out) {
     let p = [x, y];
     // kept small on purpose: anything the hand uncovers is only a blurry inpaint
-    p = rot(p, KNUCKLE, Math.cos(P.ParamFingerTap * 0.07 * w.finger), Math.sin(P.ParamFingerTap * 0.07 * w.finger));
-    const ha = -P.ParamHandAngle / 10 * 0.045 * w.wrist, aa = -P.ParamArmAngle / 10 * 0.015 * w.arm;
+    p = rot(p, KNUCKLE, Math.cos(P.fingerTap * 0.07 * w.finger), Math.sin(P.fingerTap * 0.07 * w.finger));
+    const ha = -P.handAngle / 10 * 0.045 * w.wrist, aa = -P.armAngle / 10 * 0.015 * w.arm;
     p = rot(p, WRIST, Math.cos(ha), Math.sin(ha));
     p = rot(p, ELBOW, Math.cos(aa), Math.sin(aa));
     p = F.tr(p);

@@ -25,7 +25,7 @@ for (const item of cases) test(`${item.name} changes the expected region by more
   const edited = parseRig(fixture);
   item.edit(edited);
   const a = createRig(original), b = createRig(edited);
-  const P = { ...parameters, ParamAngleX: 30, ParamHandAngle: 10 };
+  const P = { ...parameters, angleX: 30, handAngle: 10 };
   const fa = a.handFrame(P), fb = b.handFrame(P);
   let maximum = 0;
   const [x0, x1, y0, y1] = item.bounds;

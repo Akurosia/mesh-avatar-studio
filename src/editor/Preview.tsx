@@ -5,12 +5,12 @@ import type { Rig } from '../rig/types';
 
 const defaults: Record<string, number> = Object.fromEntries(PARAMS.map(p => [p.id, p.def]));
 const sliders = [
-  { id: 'ParamAngleX', label: 'Angle X', min: -30, max: 30, def: 0 },
-  { id: 'ParamAngleY', label: 'Angle Y', min: -30, max: 30, def: 0 },
-  { id: 'ParamAngleZ', label: 'Angle Z', min: -30, max: 30, def: 0 },
+  { id: 'angleX', label: 'Angle X', min: -30, max: 30, def: 0 },
+  { id: 'angleY', label: 'Angle Y', min: -30, max: 30, def: 0 },
+  { id: 'angleZ', label: 'Angle Z', min: -30, max: 30, def: 0 },
   { id: 'EyeOpen', label: 'Eye open', min: 0, max: 1.25, def: 1 },
-  { id: 'ParamMouthOpenY', label: 'Mouth open', min: 0, max: 1, def: 0 },
-  { id: 'ParamBodyAngleZ', label: 'Body roll', min: -10, max: 10, def: 0 },
+  { id: 'mouthOpen', label: 'Mouth open', min: 0, max: 1, def: 0 },
+  { id: 'bodyAngleZ', label: 'Body roll', min: -10, max: 10, def: 0 },
 ];
 export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, string> }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -62,8 +62,8 @@ export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, str
       if (stress) {
         const t = (now - start) / 1000;
         value.setParameters({ ...defaults, ...parameters,
-          ParamAngleX: Math.sin(t * 2) * 30, ParamAngleY: Math.cos(t * 1.3) * 25,
-          ParamAngleZ: Math.sin(t * 1.1) * 25, ParamBodyAngleZ: Math.cos(t * 0.7) * 8 });
+          angleX: Math.sin(t * 2) * 30, angleY: Math.cos(t * 1.3) * 25,
+          angleZ: Math.sin(t * 1.1) * 25, bodyAngleZ: Math.cos(t * 0.7) * 8 });
         if (t >= 6) { setStress(false); return; }
       }
       value.advance(1 / 60);
@@ -86,14 +86,14 @@ export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, str
         {sliders.map(slider => (
           <label key={slider.id}>{slider.label}
             <input type="range" aria-label={slider.label} min={slider.min} max={slider.max} step="0.05"
-              value={parameters[slider.id === 'EyeOpen' ? 'ParamEyeLOpen' : slider.id] ?? slider.def}
+              value={parameters[slider.id === 'EyeOpen' ? 'eyeLOpen' : slider.id] ?? slider.def}
               onChange={event => {
                 const value = Number(event.target.value);
                 setParameters(current => slider.id === 'EyeOpen'
-                  ? { ...current, ParamEyeLOpen: value, ParamEyeROpen: value }
+                  ? { ...current, eyeLOpen: value, eyeROpen: value }
                   : { ...current, [slider.id]: value });
               }} />
-            <output>{(parameters[slider.id === 'EyeOpen' ? 'ParamEyeLOpen' : slider.id] ?? slider.def).toFixed(2)}</output>
+            <output>{(parameters[slider.id === 'EyeOpen' ? 'eyeLOpen' : slider.id] ?? slider.def).toFixed(2)}</output>
           </label>
         ))}
       </div>

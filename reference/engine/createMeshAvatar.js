@@ -1,5 +1,5 @@
 // Mesh avatar engine: turns a pre-split single illustration (see public/avatar/miko-qipao/) into a
-// Live2D-like animated avatar on a WebGL2 canvas. No UI and no framework: the app drives it
+// 2D mesh avatar animated on a WebGL2 canvas. No UI and no framework: the app drives it
 // through the small API returned by createMeshAvatar().
 import { IMG, EYES, setEyes, baseWeights, deformBase, eyePartY, eyePartAlpha, handWeights, handFrame, deformHand, TASSELS } from './rig.js';
 import { Renderer, buildGrid } from './renderer.js';
@@ -129,8 +129,8 @@ export async function createMeshAvatar(canvas, options = {}) {
     // cut-out lash leaves seams at its edges
     const eyeOpenFor = v => (sprites ? 1 : v);
     for (const ep of eyeParts) {
-      const open = eyeOpenFor(ep.eye === 0 ? P.ParamEyeROpen : P.ParamEyeLOpen);
-      const smile = ep.eye === 0 ? P.ParamEyeSmile : (P.eyeSmileL ?? P.ParamEyeSmile);
+      const open = eyeOpenFor(ep.eye === 0 ? P.eyeROpen : P.eyeLOpen);
+      const smile = ep.eye === 0 ? P.eyeSmile : (P.eyeSmileL ?? P.eyeSmile);
       ep.layer.alpha = eyePartAlpha(ep.part, open, smile);
       const r = ep.mesh.rest, o = ep.mesh.pos;
       for (let k = 0; k < ep.W.length; k++) {
@@ -151,11 +151,11 @@ export async function createMeshAvatar(canvas, options = {}) {
     const ball = 7; // px of iris travel
     R.draw({
       eyes: [
-        eyeOpenFor(P.ParamEyeROpen), P.ParamEyeSmile, P.ParamEyeBallX * ball, -P.ParamEyeBallY * ball * 0.6,
-        eyeOpenFor(P.ParamEyeLOpen), P.eyeSmileL ?? P.ParamEyeSmile, P.ParamEyeBallX * ball * 0.85, -P.ParamEyeBallY * ball * 0.6,
+        eyeOpenFor(P.eyeROpen), P.eyeSmile, P.gazeX * ball, -P.gazeY * ball * 0.6,
+        eyeOpenFor(P.eyeLOpen), P.eyeSmileL ?? P.eyeSmile, P.gazeX * ball * 0.85, -P.gazeY * ball * 0.6,
       ],
       // with sprites the drawn mouths replace the shader-painted one
-      mouthOpen: sprites ? 0 : P.ParamMouthOpenY, mouthForm: P.ParamMouthForm, cheek: P.ParamCheek,
+      mouthOpen: sprites ? 0 : P.mouthOpen, mouthForm: P.mouthForm, cheek: P.blush,
       showMesh: false, originalAlpha: 0, joints: [],
     });
   }

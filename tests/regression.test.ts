@@ -25,14 +25,14 @@ reference.setEyes(metadata.eyes);
 const defaults: Record<string, number> = Object.fromEntries(PARAMS.map(p => [p.id, p.def]));
 const poses: Record<string, number>[] = [
   {},
-  ...[-30, -15, 15, 30].map(ParamAngleX => ({ ParamAngleX })),
-  ...[-15, 15].map(ParamAngleY => ({ ParamAngleY })),
-  ...[-15, 15].map(ParamAngleZ => ({ ParamAngleZ })),
-  { ParamAngleX: -20, ParamAngleY: 10, ParamAngleZ: 15, ParamBodyAngleZ: 8 },
-  { ParamBodyAngleX: 10, ParamBreath: 1 },
-  { ParamBrowY: 1, ParamBrowAngle: 1, ParamMouthOpenY: 1 },
-  { ParamHandAngle: 10, ParamArmAngle: 10, ParamFingerTap: 1 },
-  { ParamAngleX: 20, ParamAngleY: -10, ParamEyeLOpen: 0, ParamEyeROpen: 0.5, ParamEyeSmile: 1 },
+  ...[-30, -15, 15, 30].map(angleX => ({ angleX })),
+  ...[-15, 15].map(angleY => ({ angleY })),
+  ...[-15, 15].map(angleZ => ({ angleZ })),
+  { angleX: -20, angleY: 10, angleZ: 15, bodyAngleZ: 8 },
+  { bodyAngleX: 10, breath: 1 },
+  { browY: 1, browAngle: 1, mouthOpen: 1 },
+  { handAngle: 10, armAngle: 10, fingerTap: 1 },
+  { angleX: 20, angleY: -10, eyeLOpen: 0, eyeROpen: 0.5, eyeSmile: 1 },
 ];
 const fixedPhysics = {
   gain: 0.8,
@@ -105,11 +105,11 @@ test.skipIf(!samplePresent)('14 poses: every 7px and every layer vertex match ba
     });
     // Apply every lid mode on the full 7px grid and all fixture vertices as well.
     rig.eyes.forEach((eye, eyeIndex) => {
-      const open = eyeIndex === 0 ? P.ParamEyeROpen : P.ParamEyeLOpen;
+      const open = eyeIndex === 0 ? P.eyeROpen : P.eyeLOpen;
       for (const part of ['ball', 'low', 'crease', 'lash']) {
         points.forEach(([x, y], i) => {
-          reference.deformBase(x, reference.eyePartY(metadata.eyes[eyeIndex], part, x, y, open, P.ParamEyeSmile), weights[i].old, P, phys, a);
-          engine.deformBase(x, engine.eyePartY(eye, part, x, y, open, P.ParamEyeSmile), weights[i].new, P, phys, b);
+          reference.deformBase(x, reference.eyePartY(metadata.eyes[eyeIndex], part, x, y, open, P.eyeSmile), weights[i].old, P, phys, a);
+          engine.deformBase(x, engine.eyePartY(eye, part, x, y, open, P.eyeSmile), weights[i].new, P, phys, b);
           compare();
         });
       }
@@ -144,11 +144,11 @@ test.skipIf(!samplePresent)('all drawn eye and mouth sprite meshes match referen
   let maximum = 0;
   const seen = new Set<string>();
   for (const pose of poses) for (const form of [-1, -0.3, 0, 0.5, 1]) for (const open of [0.25, 0.8]) {
-    const P: Record<string, number> = { ...defaults, ...pose, ParamMouthForm: form, ParamMouthOpenY: open };
+    const P: Record<string, number> = { ...defaults, ...pose, mouthForm: form, mouthOpen: open };
     for (const eyeOpen of [0, 0.5, 1]) {
-      P.ParamEyeLOpen = eyeOpen;
-      P.ParamEyeROpen = eyeOpen;
-      P.ParamEyeSmile = eyeOpen === 0 ? (form > 0 ? 1 : 0) : 0;
+      P.eyeLOpen = eyeOpen;
+      P.eyeROpen = eyeOpen;
+      P.eyeSmile = eyeOpen === 0 ? (form > 0 ? 1 : 0) : 0;
       oldSprites.update(P, fixedPhysics, 0.1);
       newSprites.update(P, fixedPhysics, 0.1);
       for (const [name, old] of oldRenderer.items) {
@@ -171,7 +171,7 @@ test('physics offsets and tassel joint positions preserve the reference behavior
   const current = new Physics();
   let maximum = 0;
   for (let frame = 0; frame < 120; frame++) {
-    const P = { ...defaults, ParamAngleX: Math.sin(frame / 20) * 30, ParamAngleZ: Math.cos(frame / 15) * 15 };
+    const P = { ...defaults, angleX: Math.sin(frame / 20) * 30, angleZ: Math.cos(frame / 15) * 15 };
     const a = old.step(P, 1 / 60) as unknown as typeof fixedPhysics;
     const b = current.step(P, 1 / 60) as unknown as typeof fixedPhysics;
     const flatten = (value: unknown): number[] => {

@@ -68,7 +68,7 @@ export function createPhysics(engine, rig) {
     step(P, dt) {
       const sub = Math.max(1, Math.ceil(dt / (1 / 240)));
       const h = Math.min(dt, 0.05) / sub;
-      const roll = -P.ParamAngleZ / 30 * rig.head.maxRoll - P.ParamBodyAngleZ / 10 * rig.body.maxRoll;
+      const roll = -P.angleZ / 30 * rig.head.maxRoll - P.bodyAngleZ / 10 * rig.body.maxRoll;
       const g = this.gain;
 
       STRANDS.forEach((cfg, si) => {

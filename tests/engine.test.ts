@@ -11,7 +11,7 @@ test('rig instances have isolated coordinates and physics state', () => {
   const first = createRig(a);
   const second = createRig(b);
   const P = Object.fromEntries(PARAMS.map(p => [p.id, p.def]));
-  P.ParamAngleX = 30;
+  P.angleX = 30;
   const x = [600, 400];
   const y = [...x];
   first.applyHead(x, 1, P);

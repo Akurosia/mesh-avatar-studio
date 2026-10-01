@@ -13,8 +13,8 @@ export function createSpriteModule(engine, rig) {
   // Mouth opening area (the region the mouth drawings were painted in): used to squash only
   // the inside of the mouth sprite, the skin at its edge stays put.
   const MOUTH_AREA = rig.mouth.area;
-  // Mouth shapes. ParamMouthForm is the vowel axis: -1 wide (i) .. 0 (a) .. +1 round (u/o);
-  // ParamMouthOpenY how far it opens. Each shape names the drawing it uses, the openness that
+  // Mouth shapes. mouthForm is the vowel axis: -1 wide (i) .. 0 (a) .. +1 round (u/o);
+  // mouthOpen how far it opens. Each shape names the drawing it uses, the openness that
   // drawing shows at full size, and a width factor (u is a narrowed o).
   const MOUTH_SHAPES = {
     a: { sprite: 'mouth_a', ref: 0.9, width: 1 },
@@ -122,8 +122,8 @@ export function createSpriteModule(engine, rig) {
         for (const it of Object.values(items)) it.layer.visible = false;
         const covered = [false, false];
         const eyes = [
-          [P.ParamEyeROpen, P.ParamEyeSmile],
-          [P.ParamEyeLOpen, P.eyeSmileL ?? P.ParamEyeSmile],
+          [P.eyeROpen, P.eyeSmile],
+          [P.eyeLOpen, P.eyeSmileL ?? P.eyeSmile],
         ];
         // the frame is picked by openness; when it changes, the new drawing fades in over
         // EYE_FADE_SEC (a time-based cross-fade, so no double image is ever held)
@@ -151,16 +151,16 @@ export function createSpriteModule(engine, rig) {
           else { show(st.cur, 1); show(st.prev, 1 - k); }
           covered[i] = st.cur !== 'open' && k >= 0.999;
         });
-        const shape = mouthShape(P.ParamMouthOpenY, P.ParamMouthForm, lastShape);
+        const shape = mouthShape(P.mouthOpen, P.mouthForm, lastShape);
         lastShape = shape;
         const def = shape && MOUTH_SHAPES[shape];
         const mt = def && items[def.sprite];
         if (mt) {
           mt.layer.visible = true;
           // fade in right above the threshold so the closed line hands over softly
-          mt.layer.alpha = sstep(MOUTH_OPEN_MIN, MOUTH_OPEN_MIN + 0.04, P.ParamMouthOpenY);
+          mt.layer.alpha = sstep(MOUTH_OPEN_MIN, MOUTH_OPEN_MIN + 0.04, P.mouthOpen);
           // never squash a drawing below half its height: flatter looked like a blob
-          const squash = Math.min(1.1, Math.max(0.5, P.ParamMouthOpenY / def.ref));
+          const squash = Math.min(1.1, Math.max(0.5, P.mouthOpen / def.ref));
           place(mt, P, phys, squash, def.width);
         }
         return { eyes: covered, mouth: shape };
