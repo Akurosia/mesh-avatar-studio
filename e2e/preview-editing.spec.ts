@@ -37,7 +37,7 @@ test('strand and head drags change inspector, saved JSON and frozen preview pixe
   expect(hash(await preview.screenshot())).toBe(hash(before));
   revision = Number(await preview.getAttribute('data-revision'));
   await drag(page, [445, 340], [40, -10]);
-  await page.getByText(`nodes (${fixture.strands[0].nodes.length})`, { exact: true }).click();
+  await page.getByText(`Nodes (${fixture.strands[0].nodes.length})`, { exact: true }).click();
   await expect(page.getByRole('spinbutton', { name: 'strands.0.nodes.2.0', exact: true })).toHaveValue('485');
   await expect(page.getByRole('spinbutton', { name: 'strands.0.nodes.2.1', exact: true })).toHaveValue('330');
   await expect.poll(async () => Number(await preview.getAttribute('data-revision'))).toBeGreaterThan(revision);
@@ -96,7 +96,7 @@ test('angle sliders retain the rendered pose after rebuilding and stopping a swe
   const front = hash(await preview.screenshot());
   await page.getByRole('slider', { name: 'Turn left/right', exact: true }).press('End');
   await page.getByTestId('part-eyes').click();
-  await page.getByText(`1 · opening (${fixture.eyes[0].opening.length})`, { exact: true }).click();
+  await page.getByText(`1 · Opening (${fixture.eyes[0].opening.length})`, { exact: true }).click();
   revision = Number(await preview.getAttribute('data-revision'));
   await page.getByRole('spinbutton', { name: 'eyes.0.opening.0.0', exact: true }).fill('451');
   await expect.poll(async () => Number(await preview.getAttribute('data-revision'))).toBeGreaterThan(revision);

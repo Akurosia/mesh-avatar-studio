@@ -90,15 +90,15 @@ test('handles have human names and line editing, zoom, pan and fit remain availa
   await page.getByTestId('part-head').click();
   const center = await canvasPoint(page, 615, 400);
   await page.mouse.move(center.x, center.y);
-  await expect(page.getByRole('tooltip')).toHaveText('Head turn · centre');
+  await expect(page.getByRole('tooltip')).toHaveText('Head turn · Centre');
   await expect(canvas).toHaveCSS('cursor', 'grab');
   await page.screenshot({ path: 'docs/screenshots/ui-handle-tooltip.png' });
   await page.getByTestId('part-strands').click();
   const middle = await canvasPoint(page, 485, 190);
   await page.mouse.dblclick(middle.x, middle.y);
-  await expect(page.getByText('nodes (5)', { exact: true })).toBeVisible();
+  await expect(page.getByText('Nodes (5)', { exact: true })).toBeVisible();
   await page.keyboard.down('Alt'); await page.mouse.click(middle.x, middle.y); await page.keyboard.up('Alt');
-  await expect(page.getByText('nodes (4)', { exact: true })).toBeVisible();
+  await expect(page.getByText('Nodes (4)', { exact: true })).toBeVisible();
   const scale = Number(await canvas.getAttribute('data-scale'));
   await page.mouse.wheel(0, -200);
   await expect.poll(async () => Number(await canvas.getAttribute('data-scale'))).toBeGreaterThan(scale);

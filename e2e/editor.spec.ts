@@ -68,7 +68,7 @@ test('rebuilds from cached assets, marks cut-outs stale, and sweeps angles', asy
   await page.getByRole('slider', { name: 'Turn left/right', exact: true }).focus();
   await page.getByRole('slider', { name: 'Turn left/right', exact: true }).press('End');
   await page.getByTestId('part-eyes').click();
-  await page.getByText(`1 · opening (${fixture.eyes[0].opening.length})`, { exact: true }).click();
+  await page.getByText(`1 · Opening (${fixture.eyes[0].opening.length})`, { exact: true }).click();
   await page.getByRole('spinbutton', { name: 'eyes.0.opening.0.0', exact: true }).fill('451');
   await expect(page.getByText(/Outlines changed/)).toBeVisible();
   await expect.poll(async () => Number(await canvas.getAttribute('data-revision'))).toBeGreaterThan(revision + 1);

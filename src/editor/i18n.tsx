@@ -37,7 +37,7 @@ const en = {
   invalidRig: 'Could not open the rig file. Check the JSON and these field paths:',
   invalidFolder: 'Could not open this folder. Include source.png, rig.json, layers.json and every cut-out image.',
   invalidValue: 'Check the values at these field paths:', point: 'point', node: 'node', strand: 'Strand', eye: 'Eye',
-  accessory: 'Accessory', x: 'x', y: 'y', px: 'px',
+  accessory: 'Accessory', x: 'X', y: 'Y', px: 'px',
 };
 const ja: typeof en = {
   product: 'Mesh Avatar Studio', subtitle: 'イラストの動く範囲を調整',
@@ -102,16 +102,16 @@ const partText: Record<Language, Record<PartGroup, [string, string, string]>> = 
 };
 const fieldText: Record<string, [string, string]> = {
   image: ['Source image', '元画像'],
-  center: ['centre', '中心'], pivot: ['pivot', '支点'], rx: ['horizontal radius', '横の半径'], ry: ['vertical radius', '縦の半径'],
+  center: ['Centre', '中心'], pivot: ['Pivot', '支点'], rx: ['Horizontal radius', '横の半径'], ry: ['Vertical radius', '縦の半径'],
   cx: ['Centre X', '中心の横位置'], cy: ['Centre Y', '中心の縦位置'], shiftX: ['Horizontal travel', '横の移動量'], shiftY: ['Vertical travel', '縦の移動量'],
   pivotX: ['Pivot X', '支点の横位置'], pivotY: ['Pivot Y', '支点の縦位置'], maxRoll: ['Maximum tilt', '最大の傾き'],
   weightBand: ['Head blend range', '頭の影響範囲'], turnBand: ['Turn blend range', '顔の向きの影響範囲'], breathBand: ['Breathing range', '呼吸の影響範囲'],
   rollBand: ['Body tilt range', '体の傾きの影響範囲'], chest: ['Chest', '胸'], shoulders: ['Shoulders', '肩'],
   nose: ['Nose', '鼻'], eyeA: ['First eye', '目の1番目'], eyeB: ['Second eye', '目の2番目'], earL: ['Left ear', '左耳'], earR: ['Right ear', '右耳'],
   brow: ['Brows', '眉'], jaw: ['Jaw', 'あご'], band: ['Blend range', '影響範囲'], bunL: ['Left bun', '左のお団子'], bunR: ['Right bun', '右のお団子'],
-  opening: ['opening', '開口部'], roi: ['cut-out region', '切り抜き範囲'], x0: ['Left edge', '左端'], x1: ['Right edge', '右端'], y0: ['Top edge', '上端'], y1: ['Bottom edge', '下端'],
+  opening: ['Opening', '開口部'], roi: ['Cut-out region', '切り抜き範囲'], x0: ['Left edge', '左端'], x1: ['Right edge', '右端'], y0: ['Top edge', '上端'], y1: ['Bottom edge', '下端'],
   top: ['Upper lid curve', '上まぶたの曲線'], bot: ['Lower lid curve', '下まぶたの曲線'], angle: ['Angle', '角度'], halfLen: ['Half length', '長さの半分'],
-  bow: ['Curve depth', '曲線の深さ'], area: ['Drawing area', '差し替え範囲'], nodes: ['nodes', '節点'], sigma: ['Sway width', '揺れの幅'],
+  bow: ['Curve depth', '曲線の深さ'], area: ['Drawing area', '差し替え範囲'], nodes: ['Nodes', '節点'], sigma: ['Sway width', '揺れの幅'],
   k: ['Sway strength', '揺れの強さ'], max: ['Maximum sway', '最大の揺れ'], tip: ['Tip', '先端'], split: ['Joint split', '関節の分割位置'],
   box: ['Cut-out box', '切り抜き枠'], color: ['Colour mask', '色のマスク'], redness: ['Red threshold', '赤の比率'], minRed: ['Minimum red', '赤の最小値'],
   outline: ['Outline', '輪郭'], jawRange: ['Jaw range', 'あごの範囲'], background: ['Background patch', '背景の補完範囲'],
