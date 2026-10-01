@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Point, Rig } from '../rig/types';
 import { buildOverlay, changeVertex, imagePoint, moveHandle, nearestEdge, nearestHandle, screen, type Handle, type Viewport } from './model';
+import { useI18n, type PartGroup } from './i18n';
+import { PART_COLORS } from './parts';
 
 interface Props {
   rig: Rig;
@@ -12,12 +14,8 @@ interface Props {
   onBegin?: () => void;
   onEnd?: () => void;
 }
-const colors: Record<string, string> = {
-  head: '#159447', body: '#7c4dce', face: '#d72c68', eyes: '#0098a8', mouth: '#ea671a',
-  cheeks: '#d05383', strands: '#ca9b00', accessories: '#cf3030', hand: '#6c55d8',
-  buns: '#ba31ad', mesh: '#5a6a7c', view: '#2b69d5',
-};
 export function EditorCanvas({ rig, sourceUrl, visible, selected, onSelect, onChange, onBegin, onEnd }: Props) {
+  const { t, title } = useI18n();
   const canvas = useRef<HTMLCanvasElement>(null);
   const source = useRef<HTMLImageElement | null>(null);
   const [imageReady, setImageReady] = useState(false);
@@ -26,10 +24,16 @@ export function EditorCanvas({ rig, sourceUrl, visible, selected, onSelect, onCh
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Point>([0, 0]);
   const space = useRef(false);
+  const [hover, setHover] = useState<{ handle: Handle; point: Point } | null>(null);
+  const [dragging, setDragging] = useState(false);
   const drag = useRef<{ handle?: Handle; rig: Rig; start: Point; pan: Point; offset: Point } | null>(null);
   const overlay = useMemo(() => buildOverlay(rig), [rig]);
   const handles = overlay.handles.filter(h => visible.includes(h.group));
   const shapes = overlay.shapes.filter(s => visible.includes(s.group));
+  const focusGroup = selected?.split('.')[0] ?? '';
+  const interactiveHandles = handles.filter(h => !focusGroup || h.group === focusGroup);
+  const interactiveShapes = shapes.filter(s => !focusGroup || s.group === focusGroup);
+  const hint = !selected ? t.pickHint : interactiveShapes.some(s => s.editable) ? t.lineHint : interactiveHandles.length ? t.dragHint : t.noDots;
   useEffect(() => {
     const image = new Image();
     image.onload = () => { source.current = image; setImageReady(true); };
@@ -60,8 +64,9 @@ export function EditorCanvas({ rig, sourceUrl, visible, selected, onSelect, onCh
     }
     for (const shape of shapes) {
       if (shape.band && selected?.split('.')[0] !== shape.group) continue;
-      const active = selected === shape.item || (selected !== null && shape.item.startsWith(`${selected}.`));
-      context.strokeStyle = active ? '#004ef0' : colors[shape.group];
+      const active = focusGroup === shape.group;
+      context.globalAlpha = !focusGroup ? 0.6 : active ? 1 : 0.2;
+      context.strokeStyle = PART_COLORS[shape.group as PartGroup];
       context.lineWidth = active ? 2.5 : 1;
       context.beginPath();
       if (shape.kind === 'ellipse') {
@@ -78,24 +83,31 @@ export function EditorCanvas({ rig, sourceUrl, visible, selected, onSelect, onCh
     }
     for (const handle of handles) {
       const [x, y] = screen(handle.point, view);
-      const active = selected === handle.item;
+      const active = focusGroup === handle.group;
+      context.globalAlpha = !focusGroup ? 0.6 : active ? 1 : 0.2;
       context.beginPath();
       context.arc(x, y, active ? 5 : 3.5, 0, Math.PI * 2);
-      context.fillStyle = active ? '#004ef0' : colors[handle.group];
+      context.fillStyle = PART_COLORS[handle.group as PartGroup];
       context.fill();
       context.strokeStyle = '#ffffff';
       context.lineWidth = 1;
       context.stroke();
     }
-  }, [rig, handles, shapes, selected, size, imageReady, view]);
+    context.globalAlpha = 1;
+  }, [rig, handles, shapes, selected, focusGroup, size, imageReady, view]);
   const local = (event: { clientX: number; clientY: number }): Point => {
     const rect = canvas.current!.getBoundingClientRect();
     return [event.clientX - rect.left, event.clientY - rect.top];
   };
   return (
-    <>
+    <div className="canvas-content">
+      <div className="canvas-surface">
       <canvas ref={canvas} className="editor-canvas" data-testid="editor" tabIndex={0}
-        aria-label="Rig editor canvas" data-scale={view.scale} data-offset-x={view.x} data-offset-y={view.y}
+        aria-label={t.canvas} data-scale={view.scale} data-offset-x={view.x} data-offset-y={view.y}
+        data-focus-group={focusGroup} data-visible-groups={visible.join(',')}
+        data-dimmed-groups={focusGroup ? visible.filter(g => g !== focusGroup).join(',') : ''}
+        data-inactive-opacity={focusGroup ? '0.2' : '0.6'}
+        style={{ cursor: dragging ? 'grabbing' : hover ? 'grab' : 'default' }}
         onKeyDown={event => { if (event.code === 'Space') { event.preventDefault(); space.current = true; } }}
         onKeyUp={event => { if (event.code === 'Space') space.current = false; }}
         onBlur={() => { space.current = false; }}
@@ -116,7 +128,7 @@ export function EditorCanvas({ rig, sourceUrl, visible, selected, onSelect, onCh
           if (event.button === 1 || space.current) {
             drag.current = { rig, start: point, pan, offset: [0, 0] };
           } else if (event.button === 0) {
-            const handle = nearestHandle(handles, point, view);
+            const handle = nearestHandle(interactiveHandles, point, view);
             if (!handle) return;
             onSelect(handle.item);
             if (event.altKey && handle.vertex) {
@@ -127,10 +139,16 @@ export function EditorCanvas({ rig, sourceUrl, visible, selected, onSelect, onCh
             drag.current = { handle, rig, start: point, pan, offset: [handle.point[0] - origin[0], handle.point[1] - origin[1]] };
             onBegin?.();
           } else return;
+          setHover(null);
+          setDragging(true);
           event.currentTarget.setPointerCapture(event.pointerId);
         }}
         onPointerMove={event => {
-          if (!drag.current) return;
+          if (!drag.current) {
+            const point = local(event), handle = nearestHandle(interactiveHandles, point, view);
+            setHover(handle ? { handle, point } : null);
+            return;
+          }
           const point = local(event), current = drag.current;
           if (!current.handle) setPan([current.pan[0] + point[0] - current.start[0], current.pan[1] + point[1] - current.start[1]]);
           else {
@@ -138,19 +156,23 @@ export function EditorCanvas({ rig, sourceUrl, visible, selected, onSelect, onCh
             onChange(moveHandle(current.rig, current.handle, [target[0] + current.offset[0], target[1] + current.offset[1]]));
           }
         }}
-        onPointerUp={() => { if (drag.current?.handle) onEnd?.(); drag.current = null; }}
-        onPointerCancel={() => { if (drag.current?.handle) onEnd?.(); drag.current = null; }}
+        onPointerLeave={() => setHover(null)}
+        onPointerUp={() => { if (drag.current?.handle) onEnd?.(); drag.current = null; setDragging(false); }}
+        onPointerCancel={() => { if (drag.current?.handle) onEnd?.(); drag.current = null; setDragging(false); }}
         onDoubleClick={event => {
-          const edge = nearestEdge(shapes, local(event), view);
+          const edge = nearestEdge(interactiveShapes, local(event), view);
           if (edge) {
             onSelect(edge.shape.item);
             onChange(changeVertex(rig, edge.shape.item, edge.index, edge.point, !!edge.shape.closed));
           }
         }} />
-      <div className="canvas-help">
-        Drag handles · double-click edges to insert · Alt-click vertices to remove · wheel to zoom · Space-drag to pan
-        <button style={{ marginLeft: 8, padding: '3px 7px' }} onClick={() => { setZoom(1); setPan([0, 0]); }}>Fit</button>
+      {hover && interactiveHandles.includes(hover.handle) && <div role="tooltip" className="handle-tooltip"
+        style={{ left: Math.max(8, Math.min(hover.point[0] + 12, size.width - 220)), top: Math.max(8, hover.point[1] - 38) }}>{title(hover.handle.id)}</div>}
       </div>
-    </>
+      <div className="canvas-help">
+        <span className="context-hint">{hint}</span>
+        <div className="zoom-tools"><span title={t.zoom}>{Math.round(zoom * 100)}%</span><button title={t.panHint} onClick={() => { setZoom(1); setPan([0, 0]); }}>{t.fit}</button></div>
+      </div>
+    </div>
   );
 }

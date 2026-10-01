@@ -8,8 +8,9 @@ test('missing sample images show an empty workspace with project opening control
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Open a project', exact: true })).toBeVisible();
   await expect(page.getByText('Open rig.json and an image folder to begin. Sample images are installed separately.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open rig', exact: true })).toBeEnabled();
-  await expect(page.getByRole('button', { name: 'Open image folder', exact: true })).toBeEnabled();
+  await page.locator('.open-menu > summary').click();
+  await expect(page.getByRole('button', { name: 'Open rig.json…', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Open image folder…', exact: true })).toBeEnabled();
   await expect(page.getByTestId('preview')).toHaveCount(0);
   await page.screenshot({ path: 'docs/screenshots/empty-workspace.png' });
 });

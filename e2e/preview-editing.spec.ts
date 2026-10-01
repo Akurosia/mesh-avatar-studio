@@ -1,4 +1,4 @@
-import { samplePresent, sampleSkipReason } from './sample';
+import { dismissGuide, samplePresent, sampleSkipReason } from './sample';
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
@@ -23,12 +23,13 @@ test('strand and head drags change inspector, saved JSON and frozen preview pixe
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
+  await dismissGuide(page);
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();
-  await page.getByRole('slider', { name: 'Angle X', exact: true }).focus();
-  await page.getByRole('slider', { name: 'Angle X', exact: true }).press('End');
+  await page.getByRole('slider', { name: 'Turn left/right', exact: true }).focus();
+  await page.getByRole('slider', { name: 'Turn left/right', exact: true }).press('End');
   const preview = page.getByTestId('preview');
   let revision = Number(await preview.getAttribute('data-revision'));
-  await page.getByRole('checkbox', { name: 'Idle animation' }).uncheck();
+  await page.getByRole('button', { name: 'Pause idle motion', exact: true }).click();
   await expect.poll(async () => Number(await preview.getAttribute('data-revision'))).toBeGreaterThan(revision);
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();
   const before = await preview.screenshot({ path: 'docs/screenshots/strand-before.png' });
@@ -36,7 +37,7 @@ test('strand and head drags change inspector, saved JSON and frozen preview pixe
   expect(hash(await preview.screenshot())).toBe(hash(before));
   revision = Number(await preview.getAttribute('data-revision'));
   await drag(page, [445, 340], [40, -10]);
-  await page.getByText(`strands · 1 · nodes (${fixture.strands[0].nodes.length})`, { exact: true }).click();
+  await page.getByText(`Strand · 1 · nodes (${fixture.strands[0].nodes.length})`, { exact: true }).click();
   await expect(page.getByRole('spinbutton', { name: 'strands.0.nodes.2.0', exact: true })).toHaveValue('485');
   await expect(page.getByRole('spinbutton', { name: 'strands.0.nodes.2.1', exact: true })).toHaveValue('330');
   await expect.poll(async () => Number(await preview.getAttribute('data-revision'))).toBeGreaterThan(revision);
@@ -59,10 +60,12 @@ test('strand and head drags change inspector, saved JSON and frozen preview pixe
     difference.data[i + 2] = delta ? 30 : Math.round(first.data[i + 2] * 0.3);
     difference.data[i + 3] = 255;
   }
-  expect(hairChanged).toBeGreaterThan(100);
+  // Use image area so the same visible deformation is required at every preview size.
+  expect(hairChanged / (first.width * first.height)).toBeGreaterThan(0.001);
   await writeFile('docs/screenshots/strand-diff.png', PNG.sync.write(difference));
   await page.screenshot({ path: 'docs/screenshots/strand-editor.png' });
   revision = Number(await preview.getAttribute('data-revision'));
+  await page.getByTestId('part-head').click();
   await drag(page, [615, 400], [20, 15]);
   await expect(page.getByRole('spinbutton', { name: 'head.cx', exact: true })).toHaveValue('635');
   await expect(page.getByRole('spinbutton', { name: 'head.cy', exact: true })).toHaveValue('415');
@@ -84,13 +87,14 @@ test('strand and head drags change inspector, saved JSON and frozen preview pixe
 test('angle sliders retain the rendered pose after rebuilding and stopping a sweep', async ({ page }) => {
   test.skip(!samplePresent, sampleSkipReason);
   await page.goto('/');
+  await dismissGuide(page);
   const preview = page.getByTestId('preview');
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();
   let revision = Number(await preview.getAttribute('data-revision'));
-  await page.getByRole('checkbox', { name: 'Idle animation' }).uncheck();
+  await page.getByRole('button', { name: 'Pause idle motion', exact: true }).click();
   await expect.poll(async () => Number(await preview.getAttribute('data-revision'))).toBeGreaterThan(revision);
   const front = hash(await preview.screenshot());
-  await page.getByRole('slider', { name: 'Angle X', exact: true }).press('End');
+  await page.getByRole('slider', { name: 'Turn left/right', exact: true }).press('End');
   await page.getByLabel('Selected rig item').selectOption('eyes');
   await page.getByText(`Eye · 1 · opening (${fixture.eyes[0].opening.length})`, { exact: true }).click();
   revision = Number(await preview.getAttribute('data-revision'));
@@ -98,13 +102,13 @@ test('angle sliders retain the rendered pose after rebuilding and stopping a swe
   await expect.poll(async () => Number(await preview.getAttribute('data-revision'))).toBeGreaterThan(revision);
   const turned = hash(await preview.screenshot());
   expect(turned).not.toBe(front);
-  await expect(page.getByRole('slider', { name: 'Angle X', exact: true })).toHaveValue('30');
+  await expect(page.getByRole('slider', { name: 'Turn left/right', exact: true })).toHaveValue('30');
   const point = page.locator('.point-field').first();
   await expect(point.getByRole('spinbutton')).toHaveCount(2);
   await page.screenshot({ path: 'docs/screenshots/inspector-points-angle.png' });
   await page.getByLabel('Selected rig item').selectOption('head');
   await page.screenshot({ path: 'docs/screenshots/selected-band-lines.png' });
-  await page.getByRole('button', { name: 'Stress test', exact: true }).click();
+  await page.getByRole('button', { name: 'Sweep angles', exact: true }).click();
   await page.waitForTimeout(700);
   expect(hash(await preview.screenshot())).not.toBe(turned);
   revision = Number(await preview.getAttribute('data-revision'));
@@ -113,7 +117,7 @@ test('angle sliders retain the rendered pose after rebuilding and stopping a swe
   expect(hash(await preview.screenshot())).toBe(turned);
   await page.screenshot({ path: 'docs/screenshots/pose-after-sweep.png' });
   // Automatic completion restores the same slider-driven pose as a manual stop.
-  await page.getByRole('button', { name: 'Stress test', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Stress test', exact: true })).toBeVisible({ timeout: 10000 });
+  await page.getByRole('button', { name: 'Sweep angles', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Sweep angles', exact: true })).toBeVisible({ timeout: 10000 });
   await expect.poll(async () => hash(await preview.screenshot())).toBe(turned);
 });

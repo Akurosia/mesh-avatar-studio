@@ -9,13 +9,24 @@ import { RigHistory, downloadRig } from './history';
 import { openImageFolder, sampleImagesAvailable } from './project';
 import { layerSignature } from './stale';
 import { RigFields } from './RigFields';
+import { GROUPS, partPresent } from './parts';
+import { PartList } from './PartList';
+import { GUIDE_KEY, I18nProvider, readPreference, savePreference, useI18n, type PartGroup } from './i18n';
+import { FirstGuide, GuideSteps, Help } from './Guide';
+import { Icon } from './Icon';
 import './style.css';
 
-export const GROUPS = ['head', 'body', 'face', 'eyes', 'mouth', 'cheeks', 'strands', 'accessories', 'hand', 'buns', 'mesh', 'view'] as const;
+type EditorError = { kind: 'invalidRig' | 'invalidFolder' | 'invalidValue'; paths: string[] };
+function errorPaths(value: string) { return [...new Set(value.match(/rig(?:\.[\w]+|\[\d+\])+/g) ?? [])]; }
 
 const builtSignature = layerSignature(parseRig(fixture));
 
-export function App() {
+export function App() { return <I18nProvider><Workspace /></I18nProvider>; }
+function Workspace() {
+  const { t, parts, language, setLanguage, title } = useI18n();
+  const openMenu = useRef<HTMLDetailsElement>(null);
+  const [guide, setGuide] = useState(() => readPreference(GUIDE_KEY) !== '1');
+  const [help, setHelp] = useState(false);
   const [history] = useState(() => new RigHistory(parseRig(fixture)));
   const [rig, setRig] = useState(history.present);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -36,11 +47,11 @@ export function App() {
   }, []);
   const [visible, setVisible] = useState<string[]>([...GROUPS]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<EditorError | null>(null);
   const update = (next: Rig) => {
     const errors = validateRig(next);
-    if (errors.length) { setError(errors.join('\n')); return; }
-    setError('');
+    if (errors.length) { setError({ kind: 'invalidValue', paths: errorPaths(errors.join('\n')) }); return; }
+    setError(null);
     history.change(next);
     setRig(history.present);
   };
@@ -49,23 +60,25 @@ export function App() {
     try {
       update(parseRig(JSON.parse(await file.text())));
       setSelected(null);
-    } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
+    } catch (error) { setError({ kind: 'invalidRig', paths: errorPaths(String(error)) }); }
   };
   const openFolder = async (files: File[]) => {
     try {
       const project = await openImageFolder(files);
       projectOpened.current = true;
       if (project.rig) update(project.rig);
+      setSelected(null);
       objectUrls.current.forEach(url => URL.revokeObjectURL(url));
       objectUrls.current = project.urls;
       setSourceUrl(project.sourceUrl);
       setAssets(project.assets);
       setChecking(false);
-      setError('');
-    } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
+      setError(null);
+    } catch { setError({ kind: 'invalidFolder', paths: [] }); }
   };
   useEffect(() => {
     const keyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setHelp(false); if (openMenu.current) openMenu.current.open = false; }
       if (!(event.ctrlKey || event.metaKey)) return;
       const typing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
       if (event.key.toLowerCase() === 's') { event.preventDefault(); downloadRig(history.present); }
@@ -77,74 +90,67 @@ export function App() {
     window.addEventListener('keydown', keyboard);
     return () => window.removeEventListener('keydown', keyboard);
   }, [history]);
-  return (
-    <main onDragOver={event => event.preventDefault()} onDrop={event => {
-      event.preventDefault();
-      void openFile(event.dataTransfer.files[0]);
-    }}>
-      <header className="toolbar">
-        <div><h1>Mesh Avatar Studio</h1><p>Rig editor</p></div>
-        <nav aria-label="Project tools">
-          <input ref={fileInput} type="file" accept=".json,application/json" hidden aria-label="Open rig file"
-            onChange={event => { void openFile(event.target.files?.[0]); event.target.value = ''; }} />
-          <input ref={folderInput} type="file" multiple hidden aria-label="Open image folder files"
-            {...{ webkitdirectory: '' }} onChange={event => {
-              void openFolder(Array.from(event.target.files ?? []));
-              event.target.value = '';
-            }} />
-          <button onClick={() => fileInput.current!.click()}>Open rig</button>
-          <button onClick={() => folderInput.current!.click()}>Open image folder</button>
-          <button onClick={() => downloadRig(rig)}>Save rig</button>
-          <button disabled={!history.canUndo} onClick={() => setRig(history.undo())}>Undo</button>
-          <button disabled={!history.canRedo} onClick={() => setRig(history.redo())}>Redo</button>
-        </nav>
-      </header>
-      <div className="layer-bar" aria-label="Rig groups">
-        {GROUPS.map(group => (
-          <label key={group}>
-            <input type="checkbox" checked={visible.includes(group)} onChange={() => setVisible(current =>
-              current.includes(group) ? current.filter(value => value !== group) : [...current, group])} />
-            {group}
-          </label>
-        ))}
-      </div>
-      {layerSignature(rig) !== builtSignature && (
-        <p role="status" className="stale">Layers are stale: cut-out geometry changed. The existing images and eye curves are retained; re-cutting requires the planned layer builder.</p>
-      )}
-      {!sourceUrl && (
-        <section className="panel empty-project">
-          <h2>{checking ? 'Checking for sample images…' : 'Open a project'}</h2>
-          <p>Open rig.json and an image folder to begin. Sample images are installed separately.</p>
-          {error && <p role="alert" className="error">{error}</p>}
-        </section>
-      )}
-      {sourceUrl && <div className="workspace">
-        <section className="panel editor-panel">
-          <div className="panel-title"><h2>Source & rig</h2><span>{rig.image.width} × {rig.image.height} px</span></div>
+  const selectPart = (group: string) => { setSelected(group); setVisible(current => current.includes(group) ? current : [...current, group]); };
+  const selectedGroup = selected?.split('.')[0] as PartGroup | undefined;
+  const selectedPart = selectedGroup && parts[selectedGroup];
+  const currentLayers = JSON.parse(layerSignature(rig)), builtLayers = JSON.parse(builtSignature);
+  const changed = Object.keys(currentLayers).filter(key => JSON.stringify(currentLayers[key]) !== JSON.stringify(builtLayers[key]));
+  const errorNotice = error && <p role="alert" className="error">{t[error.kind]} {error.paths.join(', ')}</p>;
+  const dismissGuide = () => { setGuide(false); savePreference(GUIDE_KEY, '1'); };
+  const chooseFile = (folder: boolean) => { if (openMenu.current) openMenu.current.open = false; (folder ? folderInput : fileInput).current!.click(); };
+  return <main onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); void openFile(event.dataTransfer.files[0]); }}>
+    <header className="toolbar">
+      <div className="brand"><h1>{t.product}</h1><p>{t.subtitle}</p></div>
+      <nav aria-label={t.tools}>
+        <input ref={fileInput} type="file" accept=".json,application/json" hidden aria-label={t.rigFile}
+          onChange={event => { void openFile(event.target.files?.[0]); event.target.value = ''; }} />
+        <input ref={folderInput} type="file" multiple hidden aria-label={t.folderFiles} {...{ webkitdirectory: '' }}
+          onChange={event => { void openFolder(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
+        <details ref={openMenu} className="open-menu"><summary>{t.openProject}<Icon name="chevron" /></summary>
+          <div className="project-menu"><button onClick={() => chooseFile(false)}>{t.openRig}</button><button onClick={() => chooseFile(true)}>{t.openFolder}</button></div>
+        </details>
+        <button className="icon-button" aria-label={t.save} title={`${t.save} · ⌘S`} onClick={() => downloadRig(rig)}><Icon name="save" /></button>
+        <span className="toolbar-divider" />
+        <button className="icon-button" aria-label={t.undo} title={`${t.undo} · ⌘Z`} disabled={!history.canUndo} onClick={() => setRig(history.undo())}><Icon name="undo" /></button>
+        <button className="icon-button" aria-label={t.redo} title={`${t.redo} · ⇧⌘Z`} disabled={!history.canRedo} onClick={() => setRig(history.redo())}><Icon name="redo" /></button>
+        <span className="toolbar-divider" />
+        <button className="icon-button" aria-label={t.help} title={t.help} aria-expanded={help} onClick={() => setHelp(current => !current)}><Icon name="help" /></button>
+        <div className="language-toggle" role="group" aria-label={t.language}>
+          <button aria-label={t.english} aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>{t.enCode}</button>
+          <button aria-label={t.japanese} aria-pressed={language === 'ja'} onClick={() => setLanguage('ja')}>{t.jaCode}</button>
+        </div>
+      </nav>
+    </header>
+    {help && <Help onClose={() => setHelp(false)} onGuide={() => { setGuide(true); setHelp(false); }} />}
+    {changed.length > 0 && <div role="status" className="stale">{t.stale}<small>{t.changedParts}: {changed.map(key => parts[key as PartGroup]?.[0] ?? title(key)).join(' · ')}</small></div>}
+    {!sourceUrl && <section className="panel empty-project"><h2>{checking ? t.checking : t.emptyTitle}</h2><p>{t.emptyHelp}</p>{errorNotice}</section>}
+    {sourceUrl && <div className="workspace">
+      <PartList rig={rig} visible={visible} selected={selected} onSelect={selectPart} onVisible={setVisible} />
+      <section className="panel editor-panel">
+        <div className="panel-title"><h2>{t.source}</h2><span>{rig.image.width} × {rig.image.height} {t.px}</span></div>
+        <div className="canvas-stage">
           <EditorCanvas sourceUrl={sourceUrl} rig={rig} visible={visible} selected={selected} onSelect={setSelected} onChange={update}
-            onBegin={() => history.begin()} onEnd={() => {
-              history.end();
-              setRig(structuredClone(history.present));
-            }} />
-        </section>
+            onBegin={() => history.begin()} onEnd={() => { history.end(); setRig(structuredClone(history.present)); }} />
+          {guide && <FirstGuide onDismiss={dismissGuide} />}
+        </div>
+      </section>
+      <div className="right-column">
         <Preview rig={rig} assets={assets} />
         <aside className="panel inspector">
-          <h2>Selection</h2>
-          <select aria-label="Selected rig item" value={selected ?? ''} onChange={event => setSelected(event.target.value || null)}>
-            <option value="">Select a rig item</option>
-            {GROUPS.map(group => <option key={group} value={group}>{group}</option>)}
-            {(rig.strands ?? []).map((strand, i) => <option key={strand.name} value={`strands.${i}`}>{strand.name}</option>)}
-            {selected && !GROUPS.includes(selected as typeof GROUPS[number]) && !/^strands\.\d+$/.test(selected) &&
-              <option value={selected}>{selected}</option>}
-          </select>
-          {error && <p role="alert" className="error">{error}</p>}
-          {!selected && <p className="muted">Select a rig handle to edit its fields.</p>}
-          <div className="fields">
-            {selected && <RigFields rig={rig} path={selected}
-              onChange={(path, value) => update(setAt(rig, path, value))} /> }
+          <div className="selection-heading"><h2>{selectedPart?.[0] ?? t.selection}</h2>
+            <select aria-label={t.selectedItem} value={selected ?? ''} onChange={event => event.target.value ? selectPart(event.target.value) : setSelected(null)}>
+              <option value="">{t.selectPart}</option>
+              {GROUPS.map(group => <option key={group} value={group} disabled={!partPresent(rig, group)}>{parts[group][0]}</option>)}
+              {(rig.strands ?? []).map((_, i) => <option key={i} value={`strands.${i}`}>{title(`strands.${i}`)}</option>)}
+              {selected && !GROUPS.includes(selected as PartGroup) && !/^strands\.\d+$/.test(selected) && <option value={selected}>{title(selected)}</option>}
+            </select>
           </div>
+          {errorNotice}
+          {selectedPart ? <><p className="part-description">{selectedPart[1]}</p><p className="part-tip"><strong>{t.tip}</strong> {selectedPart[2]}</p>
+            <div className="fields">{selected && <RigFields rig={rig} path={selected} onChange={(path, value) => update(setAt(rig, path, value))} />}</div></>
+            : <div className="selection-empty"><p>{t.selectPart}</p><GuideSteps /></div>}
         </aside>
-      </div>}
-    </main>
-  );
+      </div>
+    </div>}
+  </main>;
 }

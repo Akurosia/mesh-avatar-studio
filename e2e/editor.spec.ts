@@ -1,4 +1,4 @@
-import { samplePresent, sampleSkipReason } from './sample';
+import { dismissGuide, samplePresent, sampleSkipReason } from './sample';
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +7,7 @@ import fixture from '../samples/miko-qipao/rig.json' with { type: 'json' };
 test('dragging a head handle synchronizes the inspector', async ({ page }) => {
   test.skip(!samplePresent, sampleSkipReason);
   await page.goto('/');
+  await dismissGuide(page);
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();
   const canvas = page.getByTestId('editor');
   await expect(canvas).toHaveAttribute('data-scale', /0\./);
@@ -38,6 +39,7 @@ test('dragging a head handle synchronizes the inspector', async ({ page }) => {
 test('opens a validated rig and rejects malformed files without replacing the project', async ({ page }) => {
   test.skip(!samplePresent, sampleSkipReason);
   await page.goto('/');
+  await dismissGuide(page);
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();
   const edited = structuredClone(fixture);
   edited.head.cx = 645;
@@ -56,32 +58,33 @@ test('rebuilds from cached assets, marks cut-outs stale, and sweeps angles', asy
     if (new URL(request.url()).pathname.startsWith('/miko-qipao/')) assets.push(request.url());
   });
   await page.goto('/');
+  await dismissGuide(page);
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();
   const count = assets.length;
   const canvas = page.getByTestId('preview');
   const revision = Number(await canvas.getAttribute('data-revision'));
-  await page.getByRole('checkbox', { name: 'Idle animation' }).uncheck();
+  await page.getByRole('button', { name: 'Pause idle motion', exact: true }).click();
   await expect.poll(async () => Number(await canvas.getAttribute('data-revision'))).toBeGreaterThan(revision);
-  await page.getByRole('slider', { name: 'Angle X', exact: true }).focus();
-  await page.getByRole('slider', { name: 'Angle X', exact: true }).press('End');
+  await page.getByRole('slider', { name: 'Turn left/right', exact: true }).focus();
+  await page.getByRole('slider', { name: 'Turn left/right', exact: true }).press('End');
   await page.getByLabel('Selected rig item').selectOption('eyes');
   await page.getByText(`Eye · 1 · opening (${fixture.eyes[0].opening.length})`, { exact: true }).click();
   await page.getByRole('spinbutton', { name: 'eyes.0.opening.0.0', exact: true }).fill('451');
-  await expect(page.getByText(/Layers are stale:/)).toBeVisible();
+  await expect(page.getByText(/Outlines changed/)).toBeVisible();
   await expect.poll(async () => Number(await canvas.getAttribute('data-revision'))).toBeGreaterThan(revision + 1);
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();
   expect(assets.length).toBe(count);
   await page.screenshot({ path: 'docs/screenshots/stale.png' });
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await expect(page.getByText(/Layers are stale:/)).toBeHidden();
-  await page.getByRole('button', { name: 'Stress test', exact: true }).click();
+  await expect(page.getByText(/Outlines changed/)).toBeHidden();
+  await page.getByRole('button', { name: 'Sweep angles', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Stop sweep' })).toBeVisible();
   for (let frame = 0; frame < 3; frame++) {
     await page.waitForTimeout(650);
     await page.screenshot({ path: `docs/screenshots/stress-${frame}.png` });
   }
   await page.getByRole('button', { name: 'Stop sweep', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Stress test', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sweep angles', exact: true })).toBeVisible();
 });
 
 test('opens a local image folder without the installed sample', async ({ page }) => {
@@ -91,6 +94,7 @@ test('opens a local image folder without the installed sample', async ({ page })
     return route.continue();
   });
   await page.goto('/');
+  await dismissGuide(page);
   await expect(page.getByRole('heading', { name: 'Open a project', exact: true })).toBeVisible();
   await page.getByLabel('Open image folder files', { exact: true }).setInputFiles(fileURLToPath(new URL('../samples/miko-qipao/', import.meta.url)));
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();

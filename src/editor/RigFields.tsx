@@ -1,25 +1,18 @@
 import type { Rig } from '../rig/types';
 import { getAt } from './model';
 import { NumericField } from './NumericField';
-
-function title(path: string) {
-  return path.split('.').map((part, index, parts) => {
-    if (/^\d+$/.test(part)) return String(Number(part) + 1);
-    if (part === 'eyes') return 'Eye';
-    if (/^\d+$/.test(parts[index + 1] ?? '') && ['opening', 'roi', 'nodes', 'outline', 'jaw'].includes(part)) return `${part} · point`;
-    return part.replace(/([a-z])([A-Z])/g, '$1 $2');
-  }).join(' · ');
-}
+import { useI18n } from './i18n';
 
 export function RigFields({ rig, path, onChange }: {
   rig: Rig; path: string; onChange: (path: string, value: number) => void;
 }) {
+  const { t, title } = useI18n();
   const value = getAt(rig, path);
   if (typeof value === 'number') return <NumericField path={path} label={title(path)} value={value} onChange={number => onChange(path, number)} />;
   if (!value || typeof value !== 'object') return null;
   if (Array.isArray(value) && value.length === 2 && value.every(v => typeof v === 'number') && !/band$/i.test(path)) {
     return <div className="point-field"><span>{title(path)}</span><div className="point-inputs">
-      {value.map((number, index) => <NumericField key={index} path={`${path}.${index}`} label={index === 0 ? 'x' : 'y'}
+      {value.map((number, index) => <NumericField key={index} path={`${path}.${index}`} label={index === 0 ? t.x : t.y}
         value={number} onChange={next => onChange(`${path}.${index}`, next)} />)}
     </div><small>{path}</small></div>;
   }

@@ -8,3 +8,9 @@ const paths = ['source.png', 'built/base.png', 'built/hairmask.png',
 export const samplePresent = paths.every(path => existsSync(new URL(`../samples/miko-qipao/${path}`, import.meta.url)));
 export const sampleSkipReason = 'Matching sample images are not installed; image-dependent checks are skipped.';
 if (!samplePresent) console.info(sampleSkipReason);
+
+export async function dismissGuide(page: import('@playwright/test').Page) {
+  await page.waitForFunction(() => document.querySelector('[data-testid="preview-status"]') || document.querySelector('.empty-project h2')?.textContent === 'Open a project');
+  const guide = page.getByTestId('first-guide');
+  if (await guide.isVisible()) await guide.getByRole('button').click();
+}

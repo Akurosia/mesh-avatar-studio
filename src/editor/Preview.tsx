@@ -2,20 +2,23 @@ import { useEffect, useRef, useState } from 'react';
 import { createMeshAvatar, type MeshAvatar } from '../engine';
 import { PARAMS } from '../engine/rig.js';
 import type { Rig } from '../rig/types';
+import { useI18n } from './i18n';
+import { Icon } from './Icon';
 
 const defaults: Record<string, number> = Object.fromEntries(PARAMS.map(p => [p.id, p.def]));
 const sliders = [
-  { id: 'angleX', label: 'Angle X', min: -30, max: 30, def: 0 },
-  { id: 'angleY', label: 'Angle Y', min: -30, max: 30, def: 0 },
-  { id: 'angleZ', label: 'Angle Z', min: -30, max: 30, def: 0 },
-  { id: 'EyeOpen', label: 'Eye open', min: 0, max: 1.25, def: 1 },
-  { id: 'mouthOpen', label: 'Mouth open', min: 0, max: 1, def: 0 },
-  { id: 'bodyAngleZ', label: 'Body roll', min: -10, max: 10, def: 0 },
-];
+  { id: 'angleX', label: 'turn', min: -30, max: 30, def: 0 },
+  { id: 'angleY', label: 'look', min: -30, max: 30, def: 0 },
+  { id: 'angleZ', label: 'tilt', min: -30, max: 30, def: 0 },
+  { id: 'EyeOpen', label: 'eyeOpen', min: 0, max: 1.25, def: 1 },
+  { id: 'mouthOpen', label: 'mouthOpen', min: 0, max: 1, def: 0 },
+  { id: 'bodyAngleZ', label: 'bodyTilt', min: -10, max: 10, def: 0 },
+] as const;
 export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, string> }) {
+  const { t } = useI18n();
   const canvas = useRef<HTMLCanvasElement>(null);
   const avatar = useRef<MeshAvatar | null>(null);
-  const [status, setStatus] = useState('Loading local assets…');
+  const [status, setStatus] = useState<'loading' | 'updating' | 'ready' | 'previewError'>('loading');
   const [revision, setRevision] = useState(0);
   const [idle, setIdle] = useState(true);
   const [stress, setStress] = useState(false);
@@ -25,7 +28,7 @@ export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, str
   useEffect(() => {
     let cancelled = false;
     let instance: MeshAvatar | undefined;
-    setStatus('Updating preview…');
+    setStatus('updating');
     const timer = setTimeout(() => {
       createMeshAvatar(canvas.current!, { rig, assets, assetsBase: '/miko-qipao/built/', manual: true }).then(value => {
         if (cancelled) { value.destroy(); return; }
@@ -38,8 +41,8 @@ export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, str
         // A paused preview uses a fixed warm-up so edited rigs are compared at the same physics time.
         value.advance(control.idle && !control.stress ? 1 / 60 : 1);
         setRevision(current => current + 1);
-        setStatus('Engine ready');
-      }).catch(error => { if (!cancelled) setStatus(String(error)); });
+        setStatus('ready');
+      }).catch(() => { if (!cancelled) setStatus('previewError'); });
     }, 150);
     return () => {
       cancelled = true;
@@ -74,18 +77,19 @@ export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, str
   }, [rig, assets, idle, stress, parameters, revision]);
   return (
     <section className="panel preview-panel">
-      <div className="panel-title"><h2>Live preview</h2><span role="status">{status}</span></div>
+      <div className="panel-title"><h2>{t.preview}</h2><span role="status" data-testid="preview-status" data-state={status}>{t[status]}</span></div>
       <canvas ref={canvas} data-testid="preview" data-revision={revision} className="preview-canvas"
         style={{ aspectRatio: `${rig.image.width * (1 + 2 * rig.view.padSide)} / ${rig.image.height * (1 + rig.view.padTop)}` }} />
       <div className="preview-tools">
-        <label><input type="checkbox" checked={idle} onChange={event => setIdle(event.target.checked)} /> Idle animation</label>
-        <button onClick={() => setStress(current => !current)}>{stress ? 'Stop sweep' : 'Stress test'}</button>
-        <button onClick={() => { setParameters({}); setStress(false); }}>Reset pose</button>
+        <button className="icon-button" aria-label={idle ? t.pause : t.play} title={idle ? t.pause : t.play}
+          data-testid="idle-toggle" aria-pressed={idle} onClick={() => setIdle(current => !current)}><Icon name={idle ? 'pause' : 'play'} /></button><span>{t.idle}</span>
       </div>
+      <details className="pose-test" open><summary>{t.pose}</summary>
+        <button className="reset-pose" onClick={() => { setParameters({}); setStress(false); }}>{t.reset}</button>
       <div className="sliders">
         {sliders.map(slider => (
-          <label key={slider.id}>{slider.label}
-            <input type="range" aria-label={slider.label} min={slider.min} max={slider.max} step="0.05"
+          <label key={slider.id}>{t[slider.label]}
+            <input type="range" aria-label={t[slider.label]} min={slider.min} max={slider.max} step="0.05"
               value={parameters[slider.id === 'EyeOpen' ? 'eyeLOpen' : slider.id] ?? slider.def}
               onChange={event => {
                 const value = Number(event.target.value);
@@ -97,6 +101,8 @@ export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, str
           </label>
         ))}
       </div>
+      <button className="sweep-button" title={t.sweepTip} onClick={() => setStress(current => !current)}>{stress ? t.stopSweep : t.sweep}</button>
+      </details>
     </section>
   );
 }
