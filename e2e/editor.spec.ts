@@ -44,7 +44,7 @@ test('opens a validated rig and rejects malformed files without replacing the pr
   const edited = structuredClone(fixture);
   edited.head.cx = 645;
   await page.getByLabel('Open rig file', { exact: true }).setInputFiles({ name: 'rig.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(edited)) });
-  await page.getByLabel('Selected rig item').selectOption('head');
+  await page.getByTestId('part-head').click();
   await expect(page.getByRole('spinbutton', { name: 'head.cx', exact: true })).toHaveValue('645');
   await page.getByLabel('Open rig file', { exact: true }).setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{"version":1}') });
   await expect(page.getByRole('alert')).toContainText('rig.image');
@@ -67,8 +67,8 @@ test('rebuilds from cached assets, marks cut-outs stale, and sweeps angles', asy
   await expect.poll(async () => Number(await canvas.getAttribute('data-revision'))).toBeGreaterThan(revision);
   await page.getByRole('slider', { name: 'Turn left/right', exact: true }).focus();
   await page.getByRole('slider', { name: 'Turn left/right', exact: true }).press('End');
-  await page.getByLabel('Selected rig item').selectOption('eyes');
-  await page.getByText(`Eye · 1 · opening (${fixture.eyes[0].opening.length})`, { exact: true }).click();
+  await page.getByTestId('part-eyes').click();
+  await page.getByText(`1 · opening (${fixture.eyes[0].opening.length})`, { exact: true }).click();
   await page.getByRole('spinbutton', { name: 'eyes.0.opening.0.0', exact: true }).fill('451');
   await expect(page.getByText(/Outlines changed/)).toBeVisible();
   await expect.poll(async () => Number(await canvas.getAttribute('data-revision'))).toBeGreaterThan(revision + 1);
@@ -99,6 +99,6 @@ test('opens a local image folder without the installed sample', async ({ page })
   await page.getByLabel('Open image folder files', { exact: true }).setInputFiles(fileURLToPath(new URL('../samples/miko-qipao/', import.meta.url)));
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();
   await expect(page.getByTestId('editor')).toBeVisible();
-  await page.getByLabel('Selected rig item').selectOption('head');
+  await page.getByTestId('part-head').click();
   await expect(page.getByRole('spinbutton', { name: 'head.cx', exact: true })).toHaveValue('615');
 });

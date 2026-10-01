@@ -4,6 +4,8 @@ const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: 'e2e',
+  // Canvas previews share GPU resources; bound concurrent browser rendering.
+  workers: 2,
   use: {
     baseURL,
     viewport: { width: 1440, height: 1000 },

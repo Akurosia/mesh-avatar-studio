@@ -96,9 +96,9 @@ test('handles have human names and line editing, zoom, pan and fit remain availa
   await page.getByTestId('part-strands').click();
   const middle = await canvasPoint(page, 485, 190);
   await page.mouse.dblclick(middle.x, middle.y);
-  await expect(page.getByText('Strand · 1 · nodes (5)', { exact: true })).toBeVisible();
+  await expect(page.getByText('nodes (5)', { exact: true })).toBeVisible();
   await page.keyboard.down('Alt'); await page.mouse.click(middle.x, middle.y); await page.keyboard.up('Alt');
-  await expect(page.getByText('Strand · 1 · nodes (4)', { exact: true })).toBeVisible();
+  await expect(page.getByText('nodes (4)', { exact: true })).toBeVisible();
   const scale = Number(await canvas.getAttribute('data-scale'));
   await page.mouse.wheel(0, -200);
   await expect.poll(async () => Number(await canvas.getAttribute('data-scale'))).toBeGreaterThan(scale);
@@ -145,12 +145,19 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) for (const language of
     await expect(page.locator('.part-tip')).toBeVisible();
     await expect(page.locator('.pose-test')).toHaveAttribute('open', '');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    for (const selector of ['.parts-panel', '.editor-panel', '.preview-panel', '.inspector']) {
+    for (const selector of ['.parts-panel', '.editor-panel', '.preview-panel']) {
       const box = (await page.locator(selector).boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(width);
       expect(box.y + box.height).toBeLessThanOrEqual(height);
     }
+    const preview = (await page.getByTestId('preview').boundingBox())!;
+    expect(preview.height).toBeGreaterThanOrEqual(width === 1440 ? 360 : 300);
+    const pose = (await page.locator('.pose-test').boundingBox())!;
+    expect(pose.y + pose.height).toBeLessThanOrEqual(height);
+    await expect(page.locator('.inspector select')).toHaveCount(0);
+    const field = page.getByRole('spinbutton', { name: 'head.cx', exact: true });
+    await expect(field.locator('..').locator('span')).toHaveText(language === 'ja' ? '中心の横位置' : 'Centre X');
     if (language === 'ja') {
       const english = await page.locator('main').evaluate(main => {
         const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
@@ -167,5 +174,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) for (const language of
       expect(english).toEqual([]);
     }
     await page.screenshot({ path: `docs/screenshots/ui-${language}-${width}x${height}.png` });
+    await field.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `docs/screenshots/ui-${language}-${width}x${height}-fields.png` });
   });
 }

@@ -9,7 +9,7 @@ import { RigHistory, downloadRig } from './history';
 import { openImageFolder, sampleImagesAvailable } from './project';
 import { layerSignature } from './stale';
 import { RigFields } from './RigFields';
-import { GROUPS, partPresent } from './parts';
+import { GROUPS } from './parts';
 import { PartList } from './PartList';
 import { GUIDE_KEY, I18nProvider, readPreference, savePreference, useI18n, type PartGroup } from './i18n';
 import { FirstGuide, GuideSteps, Help } from './Guide';
@@ -137,14 +137,7 @@ function Workspace() {
       <div className="right-column">
         <Preview rig={rig} assets={assets} />
         <aside className="panel inspector">
-          <div className="selection-heading"><h2>{selectedPart?.[0] ?? t.selection}</h2>
-            <select aria-label={t.selectedItem} value={selected ?? ''} onChange={event => event.target.value ? selectPart(event.target.value) : setSelected(null)}>
-              <option value="">{t.selectPart}</option>
-              {GROUPS.map(group => <option key={group} value={group} disabled={!partPresent(rig, group)}>{parts[group][0]}</option>)}
-              {(rig.strands ?? []).map((_, i) => <option key={i} value={`strands.${i}`}>{title(`strands.${i}`)}</option>)}
-              {selected && !GROUPS.includes(selected as PartGroup) && !/^strands\.\d+$/.test(selected) && <option value={selected}>{title(selected)}</option>}
-            </select>
-          </div>
+          <div className="selection-heading"><h2>{selectedPart?.[0] ?? t.selection}</h2></div>
           {errorNotice}
           {selectedPart ? <><p className="part-description">{selectedPart[1]}</p><p className="part-tip"><strong>{t.tip}</strong> {selectedPart[2]}</p>
             <div className="fields">{selected && <RigFields rig={rig} path={selected} onChange={(path, value) => update(setAt(rig, path, value))} />}</div></>
