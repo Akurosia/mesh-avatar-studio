@@ -6,7 +6,7 @@ import type { Rig } from '../rig/types';
 import { parseRig, validateRig } from '../rig/validate';
 import { Preview } from './Preview';
 import { RigHistory, downloadRig } from './history';
-import { openProjectFolder, openLocalProject, localProjects, projectAction, sampleImagesAvailable, repositoryContext, runProjectJob, ProjectJobError, type ProjectJob, type LocalProject } from './project';
+import { openProjectFolder, openLocalProject, copySample, localProjects, projectAction, sampleImagesAvailable, repositoryContext, runProjectJob, ProjectJobError, type ProjectJob, type LocalProject } from './project';
 import { layerSignature } from './stale';
 import { RigFields } from './RigFields';
 import { GROUPS } from './parts';
@@ -23,7 +23,7 @@ import { readRecent, addRecent, saveRecent, REOPEN_KEY, pickDirectory, hasDirect
   keepDirectory, restoreDirectory, forgetDirectory, clearDirectories, type RecentProject, type ProjectDirectory } from './recent-projects';
 import './style.css';
 
-type EditorError = { kind: 'invalidRig' | 'invalidFolder' | 'invalidValue' | 'saveError' | 'revealError' | 'copyError'; paths: string[] };
+type EditorError = { kind: 'invalidRig' | 'invalidFolder' | 'invalidValue' | 'saveError' | 'revealError' | 'copyError' | 'continueError'; paths: string[] };
 function errorPaths(value: string) { return [...new Set(value.match(/rig(?:\.[\w]+|\[\d+\])+/g) ?? [])]; }
 
 export function App() { return <I18nProvider><Workspace /></I18nProvider>; }
@@ -51,7 +51,7 @@ function Workspace() {
   const [focusRequest, setFocusRequest] = useState<{ group: string; id: number }>();
   const [mouthSprites, setMouthSprites] = useState(true), [mouthRequest, setMouthRequest] = useState(0);
   const [job, setJob] = useState<ProjectJob | null>(null);
-  const jobRef = useRef<ProjectJob | null>(null);
+  const jobRef = useRef<ProjectJob | 'transfer' | null>(null);
   const [rebuildError, setRebuildError] = useState<ProjectJobError | null>(null);
   useEffect(() => { void repositoryContext().then(context => { setRootPath(context?.rootPath); }); }, []);
   const [recent, setRecent] = useState(readRecent);
@@ -305,6 +305,27 @@ function Workspace() {
       return result;
     } finally { jobRef.current = null; setJob(null); }
   };
+  const sampleEditing = !!localProject?.readOnly || (!localProject && !pickedName);
+  const listedProject = !localProject && pickedName ? projects?.find(project => !project.readOnly && project.name === pickedName && project.relativePath.startsWith('projects/')) : undefined;
+  const continueEditing = async () => {
+    if (jobRef.current || saving || opening) return;
+    const edited = structuredClone(history.present), previousSignature = builtSignature;
+    jobRef.current = 'transfer'; setOpening(true); setError(null);
+    try {
+      const entry = sampleEditing ? await copySample(edited) : listedProject;
+      if (!entry) throw new Error('Project unavailable');
+      const loaded = await openLocalProject(entry);
+      // The copied layers still reflect the sample's original outlines, not the edited rig.
+      setBuiltSignature(sampleEditing ? previousSignature : layerSignature(loaded.rig!));
+      history.replacePresent(edited); setRig(history.present); setDragStale(null);
+      objectUrls.current.forEach(url => URL.revokeObjectURL(url)); objectUrls.current = [];
+      projectOpened.current = true; setSourceUrl(loaded.sourceUrl); setAssets(loaded.assets);
+      setLocalProject(entry); setPickedName(''); setChecking(false); setRebuildError(null);
+      setProjects(await localProjects());
+      remember({ id: `server:${entry.name}`, kind: 'server', name: entry.name, serverName: entry.name, relativePath: entry.relativePath, lastOpened: new Date().toISOString() });
+    } catch { setError({ kind: 'continueError', paths: [] }); }
+    finally { jobRef.current = null; setOpening(false); }
+  };
   return <main onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); void openFile(event.dataTransfer.files[0]); }}>
     <header className="toolbar">
       <div className="brand"><h1>{t.product}</h1><p>{t.subtitle}</p></div>
@@ -313,7 +334,7 @@ function Workspace() {
           onChange={event => { void openFile(event.target.files?.[0]); event.target.value = ''; }} />
         <input ref={folderInput} type="file" multiple hidden aria-label={t.folderFiles} {...{ webkitdirectory: '' }}
           onChange={event => { void openFolder(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
-        <details ref={openMenu} className="open-menu" inert={job !== null} onToggle={event => {
+        <details ref={openMenu} className="open-menu" inert={job !== null || opening} onToggle={event => {
           if (event.currentTarget.open) void localProjects().then(setProjects);
         }}><summary>{t.openProject}<Icon name="chevron" /></summary>
           <div className="project-menu">{recentControl}<p className="project-help">{t.projectHelp}</p>
@@ -328,10 +349,10 @@ function Workspace() {
             <button onClick={() => { void chooseFile(true); }}>{t.openFolder}</button><button onClick={() => { void chooseFile(false); }}>{t.openRig}</button>
           </div>
         </details>
-        <button className="icon-button" aria-label={t.save} disabled={saving || job !== null} title={`${t.save} · ⌘S`} onClick={() => { void save(); }}><Icon name="save" /></button>
+        <button className="icon-button" aria-label={t.save} disabled={saving || job !== null || opening} title={`${t.save} · ⌘S`} onClick={() => { void save(); }}><Icon name="save" /></button>
         <span className="toolbar-divider" />
-        <button className="icon-button" aria-label={t.undo} title={`${t.undo} · ⌘Z`} disabled={!history.canUndo || job !== null} onClick={() => setRig(history.undo())}><Icon name="undo" /></button>
-        <button className="icon-button" aria-label={t.redo} title={`${t.redo} · ⇧⌘Z`} disabled={!history.canRedo || job !== null} onClick={() => setRig(history.redo())}><Icon name="redo" /></button>
+        <button className="icon-button" aria-label={t.undo} title={`${t.undo} · ⌘Z`} disabled={!history.canUndo || job !== null || opening} onClick={() => setRig(history.undo())}><Icon name="undo" /></button>
+        <button className="icon-button" aria-label={t.redo} title={`${t.redo} · ⇧⌘Z`} disabled={!history.canRedo || job !== null || opening} onClick={() => setRig(history.redo())}><Icon name="redo" /></button>
         <span className="toolbar-divider" />
         <button className="icon-button" aria-label={t.help} title={t.help} aria-expanded={help} onClick={() => setHelp(current => !current)}><Icon name="help" /></button>
         <div className="language-toggle" role="group" aria-label={t.language}>
@@ -348,14 +369,15 @@ function Workspace() {
     </div>}
     {notice && <div role="status" className="save-notice">{t[notice.key]}{notice.path && ` ${notice.path}`}</div>}
     {help && <Help onClose={() => setHelp(false)} onGuide={() => { setGuide(true); setHelp(false); }} />}
-    {(dragStale ?? changed.length > 0) && <div className="stale" data-testid="stale-banner"><p role="status">{localProject && !localProject.readOnly ? t.staleLocal : t.stale}</p><small>{t.changedParts}: {changed.map(key => parts[key as PartGroup]?.[0] ?? title(key)).join(' · ')}</small>
-      {localProject && !localProject.readOnly ? <button className="primary" disabled={job !== null || saving} onClick={() => { setRebuildError(null); void runJob('rebuild').catch(error => setRebuildError(error instanceof ProjectJobError ? error : new ProjectJobError('toolFailed'))); }}>{job === 'rebuild' ? t.rebuilding : t.rebuild}</button> : <p>{t.rebuildUnavailable}</p>}
+    {(dragStale ?? changed.length > 0) && <div className="stale" data-testid="stale-banner"><p role="status">{localProject && !localProject.readOnly ? t.staleLocal : sampleEditing ? t.staleSample : listedProject ? t.staleListed : t.stale}</p><small>{t.changedParts}: {changed.map(key => parts[key as PartGroup]?.[0] ?? title(key)).join(' · ')}</small>
+      {localProject && !localProject.readOnly ? <button className="primary" disabled={job !== null || saving} onClick={() => { setRebuildError(null); void runJob('rebuild').catch(error => setRebuildError(error instanceof ProjectJobError ? error : new ProjectJobError('toolFailed'))); }}>{job === 'rebuild' ? t.rebuilding : t.rebuild}</button> : <><small>{sampleEditing ? t.sampleRebuildReason : t.folderRebuildReason}</small>{sampleEditing || listedProject ? <button className="primary" disabled={opening || saving || job !== null || (sampleEditing && !rootPath)} onClick={() => { void continueEditing(); }}>{opening ? t.operationBusy : sampleEditing ? t.copyContinue : t.reopenListed}</button> : <p>{t.rebuildUnavailable}</p>}</>}
       {rebuildError && <JobFeedback error={rebuildError} />}
+      {error?.kind === 'continueError' && errorNotice}
     </div>}
     {!sourceUrl && <section className="panel empty-project"><h2>{checking ? t.checking : t.emptyTitle}</h2><p>{t.projectHelp}</p><p>{t.emptyHelp}</p>{recentControl}<AskAgent newProject rootPath={rootPath} />{errorNotice}</section>}
     {sourceUrl && <div className="workspace">
-      <div className="parts-container" inert={job !== null}><PartList rig={rig} visible={visible} selected={selected} onSelect={selectPart} onFocus={group => { selectPart(group); setFocusRequest(current => ({ group, id: (current?.id ?? 0) + 1 })); }} onVisible={setVisible} /></div>
-      <section className="panel editor-panel" inert={job !== null}>
+      <div className="parts-container" inert={job !== null || opening}><PartList rig={rig} visible={visible} selected={selected} onSelect={selectPart} onFocus={group => { selectPart(group); setFocusRequest(current => ({ group, id: (current?.id ?? 0) + 1 })); }} onVisible={setVisible} /></div>
+      <section className="panel editor-panel" inert={job !== null || opening}>
         <div className="panel-title"><h2>{t.source}</h2><span>{rig.image.width} × {rig.image.height} {t.px}</span></div>
         <div className="canvas-stage">
           <EditorCanvas sourceUrl={sourceUrl} rig={rig} visible={visible} selected={selected} onSelect={setSelected} onChange={update} focusRequest={focusRequest}
@@ -368,7 +390,7 @@ function Workspace() {
         <Preview rig={rig} assets={assets} hasMouthSprites={mouthSprites} onDrawMouth={() => setMouthRequest(value => value + 1)} />
         <VariantsPanel project={localProject} projectPath={localProject?.relativePath ?? (pickedName ? `<${pickedName}>` : 'samples/miko-qipao')} assets={assets} rootPath={rootPath} busy={job !== null || saving} stale={changed.length > 0} onRun={runJob} mouthRequest={mouthRequest} onMouthPresence={setMouthSprites} />
         {!localProject && !pickedName && <details className="panel new-illustration"><summary>{t.newIllustration}</summary><AskAgent newProject rootPath={rootPath} /></details>}
-        <aside className="panel inspector" inert={job !== null}>
+        <aside className="panel inspector" inert={job !== null || opening}>
           <div className="selection-heading"><h2>{selectedPart?.[0] ?? t.selection}</h2></div>
           {errorNotice}
           {selectedPart ? <><p className="part-description">{selectedPart[1]}</p><p className="part-tip"><strong>{t.tip}</strong> {selectedPart[2]}</p>

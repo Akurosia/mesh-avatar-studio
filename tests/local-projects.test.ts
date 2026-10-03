@@ -94,3 +94,27 @@ test('plugin is development-only and has no production or preview middleware hoo
   const plugin = localProjectsPlugin(root);
   expect(plugin.apply).toBe('serve'); expect(plugin.configurePreviewServer).toBeUndefined();
 });
+
+
+test('sample copies reserve unused names, carry edits and built assets, and reject invalid or redirected sources', async () => {
+  const edited = structuredClone(fixture); edited.head.cx += 10;
+  const original = await readFile(resolve(root, 'samples/miko-qipao/rig.json'));
+  expect((await call('/__studio/copy-sample', 'POST', { version: 1 })).status).toBe(400);
+  expect((await call('/__studio/copy-sample', 'POST', edited, { origin: 'https://example.invalid' })).status).toBe(403);
+  await mkdir(resolve(root, 'projects/miko-qipao-copy'));
+  await writeFile(resolve(root, 'projects/miko-qipao-copy/keep.txt'), 'keep');
+  const results = await Promise.all([call('/__studio/copy-sample', 'POST', edited), call('/__studio/copy-sample', 'POST', edited)]);
+  expect(results.map(result => result.status)).toEqual([200, 200]);
+  const names = results.map(result => JSON.parse(result.body).name).sort();
+  expect(names).toEqual(['miko-qipao-copy-1', 'miko-qipao-copy-2']);
+  for (const name of names) {
+    expect(JSON.parse(await readFile(resolve(root, 'projects', name, 'rig.json'), 'utf8'))).toEqual(edited);
+    expect(await readFile(resolve(root, 'projects', name, 'source.png'), 'utf8')).toBe('synthetic image bytes');
+    expect(await readFile(resolve(root, 'projects', name, 'built/base.png'), 'utf8')).toBe('synthetic base bytes');
+  }
+  expect(await readFile(resolve(root, 'samples/miko-qipao/rig.json'))).toEqual(original);
+  expect(await readFile(resolve(root, 'projects/miko-qipao-copy/keep.txt'), 'utf8')).toBe('keep');
+  await symlink(resolve(root, 'projects/nova'), resolve(root, 'samples/miko-qipao/redirect'));
+  expect((await call('/__studio/copy-sample', 'POST', edited)).status).toBe(400);
+  expect((await call('/__studio/projects/miko-qipao-copy-3/rig.json')).status).toBe(404);
+});

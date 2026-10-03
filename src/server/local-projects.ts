@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
-import { readFile, readdir, realpath, stat, writeFile, rename, unlink } from 'node:fs/promises';
+import { readFile, readdir, realpath, stat, writeFile, rename, unlink, mkdir, cp, lstat, rm } from 'node:fs/promises';
 import { resolve, relative, extname, sep } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
@@ -92,6 +92,30 @@ export function localProjectMiddleware(root: string, reveal = revealFolder, runn
       });
       if (parts.length === 1 && parts[0] === 'context' && req.method === 'GET') { json(200, { rootPath: root, displayRootPath: displayPath(root) }); return; }
       if (parts.length === 1 && parts[0] === 'reveal' && req.method === 'POST') { await reveal(root); json(200, { path: root }); return; }
+      if (parts.length === 1 && parts[0] === 'copy-sample' && req.method === 'POST') {
+        const rig = await readBody(req), errors = validateRig(rig);
+        if (errors.length) throw new HttpError(400, `Invalid rig: ${errors.join(', ')}`);
+        await folder(SAMPLE);
+        await mkdir(base, { recursive: true });
+        if (await realpath(base) !== base) throw new HttpError(400, 'Project root cannot redirect elsewhere.');
+        let name = 'miko-qipao-copy', path = resolve(base, name);
+        for (let index = 1; ; index++) {
+          try { await mkdir(path); break; }
+          catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+            name = `miko-qipao-copy-${index}`; path = resolve(base, name);
+          }
+        }
+        try {
+          await cp(sample, path, { recursive: true, force: false, errorOnExist: true, filter: async source => {
+            if ((await lstat(source)).isSymbolicLink()) throw new HttpError(400, 'Sample contains redirected files.');
+            return true;
+          } });
+          await saveRig(path, rig);
+          json(200, await info(name));
+        } catch (error) { await rm(path, { recursive: true, force: true }); throw error; }
+        return;
+      }
       if (parts[0] !== 'projects') throw new HttpError(404, 'Not found.');
       if (parts.length === 1 && req.method === 'GET') {
         if (await exists(base) && await realpath(base) !== base) throw new HttpError(400, 'Project root cannot redirect elsewhere.');

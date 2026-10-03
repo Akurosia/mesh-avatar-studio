@@ -122,7 +122,7 @@ test('a newly opened project establishes its own cut-out baseline', async ({ pag
     await expect(point).toHaveValue('447');
     await expect(page.locator('.stale')).toHaveCount(0);
     await point.fill('448');
-    await expect(page.locator('.stale')).toContainText('run build-layers');
+    await expect(page.locator('.stale')).toContainText('This project is available in the project list.');
     await folder.setInputFiles(directory);
     await expect(page.locator('.stale')).toHaveCount(0);
   } finally {

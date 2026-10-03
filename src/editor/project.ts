@@ -57,6 +57,11 @@ export async function repositoryContext(): Promise<{ rootPath: string; displayRo
   if (!import.meta.env.DEV) return null;
   try { const response = await fetch('/__studio/context'); return response.ok && response.headers.get('content-type')?.includes('application/json') ? await response.json() : null; } catch { return null; }
 }
+export async function copySample(rig: Rig): Promise<LocalProject> {
+  const response = await fetch('/__studio/copy-sample', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rig) });
+  if (!response.ok) throw new Error('Could not copy the sample.');
+  return response.json();
+}
 export async function revealRepository() {
   const response = await fetch('/__studio/reveal', { method: 'POST' });
   if (!response.ok) throw new Error('Could not open repository.');
