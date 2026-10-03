@@ -29,3 +29,14 @@ test('rejects nonfinite values, zero radii and degenerate strands', () => {
   rig.strands![0].nodes[1] = rig.strands![0].nodes[0];
   expect(validateRig(rig).join()).toContain('rig.strands[0].nodes');
 });
+test('draft validation permits omitted generated curves without weakening complete rigs', () => {
+  const draft = structuredClone(fixture) as Record<string, unknown>;
+  draft.eyes = fixture.eyes.map(({ opening, roi }) => ({ opening, roi }));
+  expect(validateRig(draft, { draft: true })).toEqual([]);
+  expect(validateRig(draft).join()).toContain('rig.eyes[0].top');
+  const partial = structuredClone(draft) as { eyes: Record<string, unknown>[] };
+  partial.eyes[0].x0 = 400;
+  expect(validateRig(partial, { draft: true }).join()).toContain('supply all');
+  partial.eyes[0].opening = [[1, 2], [3, 4]];
+  expect(validateRig(partial, { draft: true }).join()).toContain('rig.eyes[0].opening');
+});

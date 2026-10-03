@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "test": "vitest run",
-    "lint": "eslint src tests e2e",
+    "lint": "eslint src tests e2e tools/*.mjs",
     "build": "tsc --noEmit && vite build",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "validate-rig": "node --experimental-strip-types tools/validate-rig.mjs",
+    "render-poses": "node --experimental-strip-types tools/render-poses.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",

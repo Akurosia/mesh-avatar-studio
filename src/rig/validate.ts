@@ -41,7 +41,7 @@ const unit: Check = (v, p, e) => {
   number(v, p, e);
   if (typeof v === 'number' && (v < 0 || v > 1)) e.push(`${p}: must be between 0 and 1`);
 };
-const schema = object({
+const schema = (draft: boolean) => object({
   version: (v, p, e) => { if (v !== 1) e.push(`${p}: only version 1 is supported`); },
   image: object({ width: integer, height: integer }),
   head: object({ ...ellipseFields, shiftX: number, shiftY: number, pivotX: number,
@@ -53,7 +53,7 @@ const schema = object({
     jaw: object({ ...ellipseFields, band }) }),
   buns: object({ bunL: ellipse, bunR: ellipse }, ['bunL', 'bunR']),
   eyes: array(object({ opening: polygon, roi: polygon, x0: number, x1: number,
-    top: array(number, 24, 24), bot: array(number, 24, 24) }), 2, 2),
+    top: array(number, 24, 24), bot: array(number, 24, 24) }, draft ? ['x0', 'x1', 'top', 'bot'] : []), 2, 2),
   mouth: object({ cx: number, cy: number, angle: number, halfLen: positive, bow: number,
     area: object({ ...ellipseFields, angle: number }) }),
   cheeks: array(point, 2, 2),
@@ -70,12 +70,18 @@ const schema = object({
   view: object({ padTop: number, padSide: number, gazeCenter: point }, ['gazeCenter']),
 }, ['buns', 'strands', 'accessories', 'hand']);
 
-export function validateRig(value: unknown): string[] {
+export function validateRig(value: unknown, options: { draft?: boolean } = {}): string[] {
   const errors: string[] = [];
-  schema(value, 'rig', errors);
+  schema(options.draft ?? false)(value, 'rig', errors);
   if (errors.length) return errors;
   const rig = value as Rig;
   rig.eyes.forEach((eye, i) => {
+    const curves = ['x0', 'x1', 'top', 'bot'] as const;
+    if (options.draft && curves.every(key => eye[key] === undefined)) return;
+    if (curves.some(key => eye[key] === undefined)) {
+      errors.push(`rig.eyes[${i}]: supply all x0/x1/top/bot fields or omit all in a draft`);
+      return;
+    }
     if (eye.x0 >= eye.x1) errors.push(`rig.eyes[${i}].x1: must exceed x0`);
     if (eye.top.some((y, k) => y > eye.bot[k])) errors.push(`rig.eyes[${i}].top: must not exceed bottom curve`);
   });
