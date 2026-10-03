@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createMeshAvatar, type MeshAvatar } from '../engine';
 import { PARAMS } from '../engine/rig.js';
+import { VOWELS, skippedKanaCharacters } from '../engine/kana.js';
 import type { Rig } from '../rig/types';
 import { useI18n } from './i18n';
 import { Icon } from './Icon';
@@ -14,7 +15,9 @@ const sliders = [
   { id: 'mouthOpen', label: 'mouthOpen', min: 0, max: 1, def: 0 },
   { id: 'bodyAngleZ', label: 'bodyTilt', min: -10, max: 10, def: 0 },
 ] as const;
-export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, string> }) {
+type Vowel = 'a' | 'i' | 'u' | 'e' | 'o' | 'n';
+type Lip = { kind: 'hold'; vowel: Vowel } | { kind: 'text'; text: string; speed: number; loop: boolean } | null;
+export function Preview({ rig, assets, hasMouthSprites, onDrawMouth }: { rig: Rig; assets?: Record<string, string>; hasMouthSprites: boolean; onDrawMouth: () => void }) {
   const { t } = useI18n();
   const canvas = useRef<HTMLCanvasElement>(null);
   const avatar = useRef<MeshAvatar | null>(null);
@@ -23,6 +26,13 @@ export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, str
   const [idle, setIdle] = useState(true);
   const [stress, setStress] = useState(false);
   const [parameters, setParameters] = useState<Record<string, number>>({});
+  const [lip, setLip] = useState<Lip>(null);
+  const [text, setText] = useState('あいうえお');
+  const [speed, setSpeed] = useState(7);
+  const [loop, setLoop] = useState(false);
+  const [liveMouth, setLiveMouth] = useState(0);
+  const [tab, setTab] = useState<'pose' | 'lip'>('pose');
+  const skipped = skippedKanaCharacters(text).join(' ');
   const controls = useRef({ idle, stress, parameters });
   controls.current = { idle, stress, parameters };
   useEffect(() => {
@@ -56,11 +66,16 @@ export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, str
     if (!value) return;
     value.setAutoIdle(idle && !stress);
     value.setAutoMotion(idle && !stress);
-    value.setParameters(idle && !stress ? parameters : { ...defaults, ...parameters });
+    const pose = lip ? { ...parameters, mouthOpen: 0 } : parameters;
+    value.setParameters(idle && !stress ? pose : { ...defaults, ...pose });
+    value.stopLipSync();
+    if (lip?.kind === 'hold') value.holdMouth(lip.vowel);
+    if (lip?.kind === 'text') value.speakKana(lip.text, { speed: lip.speed, loop: lip.loop });
     value.advance(0);
-    if (!idle && !stress) return;
+    if (!idle && !stress && !lip) return;
     let raf = 0;
     const start = performance.now();
+    let previous = start;
     const frame = (now: number) => {
       if (stress) {
         const t = (now - start) / 1000;
@@ -69,12 +84,18 @@ export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, str
           angleZ: Math.sin(t * 1.1) * 25, bodyAngleZ: Math.cos(t * 0.7) * 8 });
         if (t >= 6) { setStress(false); return; }
       }
-      value.advance(1 / 60);
+      value.advance(lip ? Math.min(0.05, Math.max(0, (now - previous) / 1000)) : 1 / 60);
+      previous = now;
+      if (lip) {
+        const state = value.getLipSyncState();
+        setLiveMouth(Math.round(state.open * 100) / 100);
+        if (!state.active) setLip(null);
+      }
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [rig, assets, idle, stress, parameters, revision]);
+  }, [rig, assets, idle, stress, parameters, revision, lip]);
   return (
     <section className="panel preview-panel">
       <div className="panel-title"><h2>{t.preview}</h2><span role="status" data-testid="preview-status" data-state={status}>{t[status]}</span></div>
@@ -84,25 +105,49 @@ export function Preview({ rig, assets }: { rig: Rig; assets?: Record<string, str
         <button className="icon-button" aria-label={idle ? t.pause : t.play} title={idle ? t.pause : t.play}
           data-testid="idle-toggle" aria-pressed={idle} onClick={() => setIdle(current => !current)}><Icon name={idle ? 'pause' : 'play'} /></button><span>{t.idle}</span>
       </div>
-      <details className="pose-test" open><summary>{t.pose}</summary>
-        <button className="reset-pose" onClick={() => { setParameters({}); setStress(false); }}>{t.reset}</button>
+      <div className="preview-tabs" role="tablist" aria-label={t.preview}>
+        <button id="pose-tab" role="tab" aria-selected={tab === 'pose'} aria-controls="pose-panel" onClick={() => setTab('pose')}>{t.pose}</button>
+        <button id="lip-tab" role="tab" aria-selected={tab === 'lip'} aria-controls="lip-panel" onClick={() => setTab('lip')}>{t.lipSync}</button>
+      </div>
+      <div className="pose-test" id="pose-panel" role="tabpanel" aria-labelledby="pose-tab" hidden={tab !== 'pose'}>
       <div className="sliders">
         {sliders.map(slider => (
           <label key={slider.id}>{t[slider.label]}
             <input type="range" aria-label={t[slider.label]} min={slider.min} max={slider.max} step="0.05"
-              value={parameters[slider.id === 'EyeOpen' ? 'eyeLOpen' : slider.id] ?? slider.def}
+              disabled={slider.id === 'mouthOpen' && lip !== null}
+              value={slider.id === 'mouthOpen' && lip ? liveMouth : parameters[slider.id === 'EyeOpen' ? 'eyeLOpen' : slider.id] ?? slider.def}
               onChange={event => {
                 const value = Number(event.target.value);
                 setParameters(current => slider.id === 'EyeOpen'
                   ? { ...current, eyeLOpen: value, eyeROpen: value }
                   : { ...current, [slider.id]: value });
               }} />
-            <output>{(parameters[slider.id === 'EyeOpen' ? 'eyeLOpen' : slider.id] ?? slider.def).toFixed(2)}</output>
+            <output>{(slider.id === 'mouthOpen' && lip ? liveMouth : parameters[slider.id === 'EyeOpen' ? 'eyeLOpen' : slider.id] ?? slider.def).toFixed(2)}</output>
           </label>
         ))}
       </div>
-      <button className="sweep-button" title={t.sweepTip} onClick={() => setStress(current => !current)}>{stress ? t.stopSweep : t.sweep}</button>
-      </details>
+      <div className="pose-actions"><button className="reset-pose" onClick={() => { setParameters({}); setStress(false); setLip(null); }}>{t.reset}</button>
+      <button className="sweep-button" title={t.sweepTip} onClick={() => setStress(current => !current)}>{stress ? t.stopSweep : t.sweep}</button></div>
+      </div>
+      <div className="lip-sync" id="lip-panel" role="tabpanel" aria-labelledby="lip-tab" hidden={tab !== 'lip'}>
+        <div className="vowel-buttons" role="group" aria-label={t.lipSync}>
+          {(Object.keys(VOWELS) as Vowel[]).map(vowel => <button key={vowel} aria-pressed={lip?.kind === 'hold' && lip.vowel === vowel}
+            onClick={() => setLip(current => current?.kind === 'hold' && current.vowel === vowel ? null : { kind: 'hold', vowel })}>{VOWELS[vowel].label}</button>)}
+          <button onClick={() => setLip(null)}>{t.release}</button>
+        </div>
+        <div className="lip-text-row"><input aria-label={t.lipText} value={text} onChange={event => setText(event.target.value)} />
+          <button disabled={!text.trim()} onClick={() => setLip({ kind: 'text', text, speed, loop })}>{t.lipPlay}</button>
+          <button disabled={!lip} onClick={() => setLip(null)}>{t.lipStop}</button>
+        </div>
+        <div className="lip-options"><label className="lip-speed">{t.lipSpeed}<input type="range" min="4" max="12" step="1" value={speed} aria-label={t.lipSpeed}
+          onChange={event => { const value = Number(event.target.value); setSpeed(value); setLip(current => current?.kind === 'text' ? { ...current, speed: value } : current); }} /><output>{speed}</output></label>
+          <label><input type="checkbox" checked={loop} onChange={event => { const value = event.target.checked; setLoop(value); setLip(current => current?.kind === 'text' ? { ...current, loop: value } : current); }} />{t.lipLoop}</label>
+        </div>
+        {!hasMouthSprites && <p className="mouth-fallback">{t.mouthFallback} <button type="button" onClick={onDrawMouth}>{t.drawMouth}</button></p>}
+        <p className="lip-help">{t.lipHelp}</p>{skipped && <p className="lip-skipped">{t.skippedKana} {skipped}</p>}
+        <div className="sliders lip-live"><label>{t.mouthOpen}<input type="range" aria-label={t.mouthOpen} min="0" max="1" step="0.01" disabled={lip !== null}
+          value={lip ? liveMouth : parameters.mouthOpen ?? 0} onChange={event => setParameters(current => ({ ...current, mouthOpen: Number(event.target.value) }))} /><output>{(lip ? liveMouth : parameters.mouthOpen ?? 0).toFixed(2)}</output></label></div>
+      </div>
     </section>
   );
 }

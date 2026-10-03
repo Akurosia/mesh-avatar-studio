@@ -8,6 +8,11 @@ export class RigHistory {
   constructor(rig: Rig) { this.present = structuredClone(rig); }
   get canUndo() { return this.past.length > 0; }
   get canRedo() { return this.future.length > 0; }
+  load(rig: Rig) {
+    this.present = structuredClone(rig);
+    this.past = []; this.future = []; this.gesture = null;
+  }
+  replacePresent(rig: Rig) { this.present = structuredClone(rig); }
   begin() { if (!this.gesture) this.gesture = structuredClone(this.present); }
   change(rig: Rig) {
     if (JSON.stringify(rig) === JSON.stringify(this.present)) return;

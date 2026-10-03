@@ -1,8 +1,11 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { localProjectsPlugin } from './src/server/local-projects';
 export default defineConfig({
-  plugins: [react(), {
+  server: { host: '127.0.0.1' },
+  plugins: [react(), localProjectsPlugin(fileURLToPath(new URL('.', import.meta.url))), {
     name: 'sample-rig',
     resolveId(id) {
       if (id === 'virtual:sample-rig') return '\0sample-rig';

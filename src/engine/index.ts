@@ -18,7 +18,10 @@ export interface MeshAvatar {
   setEmotion(tag: string | null, options?: { playMotion?: boolean }): void;
   setTalkGain(gain: number): void;
   play(id: string): void;
-  speakKana(text: string): void;
+  speakKana(text: string, options?: { speed?: number; loop?: boolean }): void;
+  holdMouth(vowel: 'a' | 'i' | 'u' | 'e' | 'o' | 'n'): void;
+  stopLipSync(): void;
+  getLipSyncState(): { active: boolean; open: number; form: number };
   setAutoIdle(on: boolean): void;
   setAutoMotion(on: boolean): void;
   setSwayGain(gain: number): void;

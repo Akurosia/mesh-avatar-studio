@@ -7,6 +7,8 @@ const paths = {
   play: 'm8 4 12 8-12 8V4Z', pause: 'M7 4v16 M17 4v16',
   help: 'M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4 M12 18h.01 M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z',
   chevron: 'm7 10 5 5 5-5', close: 'm6 6 12 12 M6 18 18 6',
+  folder: 'M3 7V4h6l2 3h10v13H3V7Z',
+  copy: 'M8 8h13v13H8V8Z M16 8V3H3v13h5',
 };
 export function Icon({ name }: { name: keyof typeof paths }) {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"

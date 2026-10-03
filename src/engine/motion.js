@@ -85,6 +85,7 @@ export class Motion {
     this.voicePeak = 0;
     this.voiceTrough = 0;
     this.kana = null;
+    this.lipHold = null;
     this.emotionUntil = 0;         // when the emotion face goes back to normal
     this.talkGain = 1;             // how much the head moves along with the voice
     this.play = null;              // { id, t } of the motion being played
@@ -122,8 +123,24 @@ export class Motion {
   }
 
   /** Mouth shapes from kana text, without audio (preview / tuning). */
-  speakKana(text) {
-    this.kana = { moras: kanaToMoras(text), t: 0 };
+  /** @param {string} text @param {{ speed?: number, loop?: boolean }} [options] */
+  speakKana(text, { speed, loop = false } = {}) {
+    this.lipHold = null;
+    const moras = kanaToMoras(text, speed === undefined ? 0.14 : 1 / clamp(Number(speed) || 7, 4, 12));
+    this.kana = moras.length ? { moras, t: 0, loop, duration: moras.reduce((sum, m) => sum + m.dur, 0) } : null;
+  }
+
+  holdMouth(vowel) {
+    this.kana = null;
+    this.lipHold = Object.hasOwn(VOWELS, vowel) ? vowel : null;
+  }
+
+  stopLipSync() {
+    this.kana = null; this.lipHold = null; this.lipOpen = null; this.mouth = 0;
+  }
+
+  getLipSyncState() {
+    return { active: this.kana !== null || this.lipHold !== null, open: this.P.mouthOpen, form: this.P.mouthForm };
   }
 
   // Mouth from the TTS loudness. A volume signal has no vowel information, so each syllable
@@ -133,9 +150,14 @@ export class Motion {
   // is scaled by where the voice sits between the recent trough and peak, so it closes in
   // the dip before each mora even when a loud voice never gets quiet.
   speechMouth(dt) {
-    if (this.kana) {
-      this.kana.t += dt;
-      const m = sampleMoras(this.kana.moras, this.kana.t);
+    if (this.kana || this.lipHold) {
+      let m;
+      if (this.lipHold) m = VOWELS[this.lipHold];
+      else {
+        this.kana.t += dt;
+        if (this.kana.loop) this.kana.t %= this.kana.duration;
+        m = sampleMoras(this.kana.moras, this.kana.t);
+      }
       if (!m) { this.kana = null; return this.mouth > 0.01 ? [this.mouth *= 0.6, this.vowelForm] : null; }
       const k = m.open > this.mouth ? 1 - Math.exp(-dt * 30) : 1 - Math.exp(-dt * 22);
       this.mouth += (m.open - this.mouth) * k;

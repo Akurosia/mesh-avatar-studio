@@ -1,6 +1,7 @@
 import { dismissGuide, samplePresent, sampleSkipReason } from './sample';
 import { expect, test } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fixture from '../samples/miko-qipao/rig.json' with { type: 'json' };
 
@@ -87,7 +88,7 @@ test('rebuilds from cached assets, marks cut-outs stale, and sweeps angles', asy
   await expect(page.getByRole('button', { name: 'Sweep angles', exact: true })).toBeVisible();
 });
 
-test('opens a local image folder without the installed sample', async ({ page }) => {
+test('opens a local project folder without the installed sample', async ({ page }) => {
   test.skip(!samplePresent, sampleSkipReason);
   await page.route('**/miko-qipao/**', route => {
     if (new URL(route.request().url()).pathname.endsWith('.png')) return route.fulfill({ status: 404, body: '' });
@@ -96,9 +97,35 @@ test('opens a local image folder without the installed sample', async ({ page })
   await page.goto('/');
   await dismissGuide(page);
   await expect(page.getByRole('heading', { name: 'Open a project', exact: true })).toBeVisible();
-  await page.getByLabel('Open image folder files', { exact: true }).setInputFiles(fileURLToPath(new URL('../samples/miko-qipao/', import.meta.url)));
+  await page.getByLabel('Open project folder files', { exact: true }).setInputFiles(fileURLToPath(new URL('../samples/miko-qipao/', import.meta.url)));
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();
   await expect(page.getByTestId('editor')).toBeVisible();
   await page.getByTestId('part-head').click();
   await expect(page.getByRole('spinbutton', { name: 'head.cx', exact: true })).toHaveValue('615');
+});
+
+test('a newly opened project establishes its own cut-out baseline', async ({ page }) => {
+  test.skip(!samplePresent, sampleSkipReason);
+  const directory = await mkdtemp(join(resolve('projects'), 'mesh-avatar-project-'));
+  try {
+    await cp(fileURLToPath(new URL('../samples/miko-qipao/', import.meta.url)), directory, { recursive: true });
+    const rig = structuredClone(fixture);
+    rig.eyes[0].opening[0][0] += 1;
+    await writeFile(join(directory, 'rig.json'), JSON.stringify(rig));
+    await page.goto('/');
+    await dismissGuide(page);
+    const folder = page.getByLabel('Open project folder files', { exact: true });
+    await folder.setInputFiles(directory);
+    await page.getByTestId('part-eyes').click();
+    await page.getByText(`1 · Opening (${rig.eyes[0].opening.length})`, { exact: true }).click();
+    const point = page.getByRole('spinbutton', { name: 'eyes.0.opening.0.0', exact: true });
+    await expect(point).toHaveValue('447');
+    await expect(page.locator('.stale')).toHaveCount(0);
+    await point.fill('448');
+    await expect(page.locator('.stale')).toContainText('run build-layers');
+    await folder.setInputFiles(directory);
+    await expect(page.locator('.stale')).toHaveCount(0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });

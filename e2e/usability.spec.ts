@@ -97,13 +97,18 @@ test('handles have human names and line editing, zoom, pan and fit remain availa
   const middle = await canvasPoint(page, 485, 190);
   await page.mouse.dblclick(middle.x, middle.y);
   await expect(page.getByText('Nodes (5)', { exact: true })).toBeVisible();
-  await page.keyboard.down('Alt'); await page.mouse.click(middle.x, middle.y); await page.keyboard.up('Alt');
+  const inserted = await canvasPoint(page, 485, 190);
+  await page.keyboard.down('Alt'); await page.mouse.click(inserted.x, inserted.y); await page.keyboard.up('Alt');
   await expect(page.getByText('Nodes (4)', { exact: true })).toBeVisible();
+  // The stale notice changes canvas size; wait for ResizeObserver and the fitted view.
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   const scale = Number(await canvas.getAttribute('data-scale'));
   await page.mouse.wheel(0, -200);
-  await expect.poll(async () => Number(await canvas.getAttribute('data-scale'))).toBeGreaterThan(scale);
+  await expect.poll(async () => Number(await canvas.getAttribute('data-scale'))).toBeCloseTo(scale * Math.exp(0.2));
   const offset = Number(await canvas.getAttribute('data-offset-x'));
-  await page.mouse.down({ button: 'middle' }); await page.mouse.move(middle.x + 30, middle.y + 20); await page.mouse.up({ button: 'middle' });
+  const panStart = await canvasPoint(page, 485, 190);
+  await page.mouse.move(panStart.x, panStart.y);
+  await page.mouse.down({ button: 'middle' }); await page.mouse.move(panStart.x + 30, panStart.y + 20); await page.mouse.up({ button: 'middle' });
   await expect.poll(async () => Number(await canvas.getAttribute('data-offset-x'))).toBeGreaterThan(offset);
   await page.getByRole('button', { name: 'Fit', exact: true }).click();
   await expect.poll(async () => Number(await canvas.getAttribute('data-scale'))).toBeCloseTo(scale);
@@ -143,7 +148,7 @@ for (const [width, height] of [[1440, 900], [1280, 800]]) for (const language of
     await page.getByTestId('idle-toggle').click();
     await expect(page.getByTestId('preview-status')).toHaveAttribute('data-state', 'ready');
     await expect(page.locator('.part-tip')).toBeVisible();
-    await expect(page.locator('.pose-test')).toHaveAttribute('open', '');
+    await expect(page.getByRole('tab', { name: language === 'ja' ? 'ポーズ確認' : 'Pose test', exact: true })).toHaveAttribute('aria-selected', 'true');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     for (const selector of ['.parts-panel', '.editor-panel', '.preview-panel']) {
       const box = (await page.locator(selector).boundingBox())!;

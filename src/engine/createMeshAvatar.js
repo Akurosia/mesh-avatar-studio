@@ -143,6 +143,11 @@ export async function createMeshAvatarImpl(canvas, options) {
   const tmp = [0, 0];
   function tick(dt) {
     const P = { ...motion.update(dt), ...parameters };
+    // Speech owns the mouth while active; explicit pose sliders still own all other parameters.
+    if (motion.lipOpen !== null) {
+      P.mouthOpen = motion.P.mouthOpen;
+      P.mouthForm = motion.P.mouthForm;
+    }
     const phys = physics.step(P, dt);
 
     const bp = baseMesh.pos, br = baseMesh.rest;
@@ -215,7 +220,10 @@ export async function createMeshAvatarImpl(canvas, options) {
     /** Play a motion or idle motion by id (see `motions`). */
     play(id) { if (motion.hasMotion(id)) motion.playMotion(id); },
     /** Move the mouth through the vowels of kana text (no audio; for previews). */
-    speakKana(text) { motion.speakKana(String(text ?? '')); },
+    speakKana(text, options) { motion.speakKana(String(text ?? ''), options); },
+    holdMouth(vowel) { motion.holdMouth(vowel); },
+    stopLipSync() { motion.stopLipSync(); },
+    getLipSyncState() { return motion.getLipSyncState(); },
     setAutoIdle(on) { motion.autoIdle = !!on; },
     setAutoMotion(on) { motion.autoMotion = !!on; },
     /** Hair / tassel sway multiplier (1 = default). */

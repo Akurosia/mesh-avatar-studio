@@ -1,19 +1,24 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { readPreference, savePreference } from './preferences';
+import { workflowEn, workflowJa } from './workflow-i18n';
+export { readPreference, savePreference } from './preferences';
 
 export type Language = 'en' | 'ja';
 export const LANGUAGE_KEY = 'mesh-avatar-language';
 export const GUIDE_KEY = 'mesh-avatar-guide-seen';
-export function readPreference(key: string) {
-  try { return localStorage.getItem(key); } catch { return null; }
-}
-export function savePreference(key: string, value: string) {
-  try { localStorage.setItem(key, value); } catch { /* The editor also works without storage. */ }
-}
 
 const en = {
+  ...workflowEn,
   product: 'Mesh Avatar Studio', subtitle: 'Shape the motion in your illustration',
-  tools: 'Project tools', openProject: 'Open project', openRig: 'Open rig.json…', openFolder: 'Open image folder…',
-  rigFile: 'Open rig file', folderFiles: 'Open image folder files', save: 'Save rig', undo: 'Undo', redo: 'Redo',
+  tools: 'Project tools', openProject: 'Open project', openRig: 'Load rig.json only…', openFolder: 'Browse for a project folder…',
+  rigFile: 'Open rig file', folderFiles: 'Open project folder files', save: 'Save rig', undo: 'Undo', redo: 'Redo',
+  projectHelp: 'A project is the folder an agent created from your illustration: rig.json, source.png and built/.',
+  recent: 'Recent', noRecent: 'No recent projects.', clearHistory: 'Clear history', removeRecent: 'Remove from history',
+  reopenLast: 'Reopen last project on start', browseAgain: 'Browse again', missingRecent: 'Project no longer exists; removed from history:',
+  localProjects: 'Local projects', noProjects: 'No local projects yet.', sampleProject: 'Sample project', updated: 'Updated',
+  drawnVariants: 'Drawn eyes/mouths', readOnly: 'Read-only', copyPath: 'Copy full path', copied: 'Path copied',
+  showFinder: 'Show in Finder', showFolder: 'Show in folder', unknownPath: 'Browser-picked project · full path unavailable',
+  savedTo: 'Saved to', saveError: 'Could not save the project. Your edits are still in the editor; try again.', revealError: 'Could not open the project folder.', copyError: 'Could not copy the path.',
   help: 'Help', close: 'Close help', language: 'Language', english: 'English', japanese: '日本語', enCode: 'EN', jaCode: 'JA',
   parts: 'Parts', faceSection: 'Face', hairSection: 'Hair & accessories', bodySection: 'Body', advanced: 'Advanced',
   notPresent: 'Not in this rig', show: 'Show overlay', hide: 'Hide overlay', showAll: 'Show all', hideAll: 'Hide all',
@@ -23,6 +28,8 @@ const en = {
   panHint: 'Scroll to zoom · Space-drag to pan', noDots: 'Edit the values in the selected part card',
   preview: 'Live preview', idle: 'Idle motion', play: 'Play idle motion', pause: 'Pause idle motion',
   pose: 'Pose test', reset: 'Reset', sweep: 'Sweep angles', stopSweep: 'Stop sweep',
+  lipSync: 'Lip sync', release: 'Release', lipText: 'Kana text', lipPlay: 'Play', lipStop: 'Stop',
+  lipSpeed: 'Morae per second', lipLoop: 'Loop', skippedKana: 'Skipped characters:', lipHelp: 'Hiragana, katakana and spaces. Preview only; no audio.',
   sweepTip: 'Swings the head through its full range to find tears',
   turn: 'Turn left/right', look: 'Look up/down', tilt: 'Tilt', eyeOpen: 'Eyes open', mouthOpen: 'Mouth open', bodyTilt: 'Body tilt',
   loading: 'Loading local assets…', updating: 'Updating preview…', ready: 'Engine ready', previewError: 'Preview could not load',
@@ -31,18 +38,27 @@ const en = {
   guide3: 'Watch the preview on the right', gotIt: 'Got it', shortcuts: 'Keyboard & mouse', guideAgain: 'Show the guide again',
   shortcutUndo: 'Undo / redo', shortcutSave: 'Save rig', shortcutPan: 'Pan the image', shortcutZoom: 'Zoom the image',
   shortcutVertex: 'Add / remove a dot', spaceDrag: 'Space + drag', wheel: 'Scroll', vertexKeys: 'Double-click a line / Alt-click a dot',
-  stale: 'Outlines changed — cut-out images will be rebuilt by the layer builder (coming later). Preview still uses the old images.',
+  stale: 'Outlines changed. Save the rig, run build-layers, then reopen the project. Preview still uses the old images.',
   changedParts: 'Changed parts', checking: 'Checking for sample images…', emptyTitle: 'Open a project',
-  emptyHelp: 'Open rig.json and an image folder to begin. Sample images are installed separately.',
+  emptyHelp: 'Choose a project from Open project, or browse for its folder. Sample images are installed separately.',
+  newProjectHelp: 'Starting from a new illustration? Ask your agent to prepare a project using the agent guide.',
   invalidRig: 'Could not open the rig file. Check the JSON and these field paths:',
   invalidFolder: 'Could not open this folder. Include source.png, rig.json, layers.json and every cut-out image.',
   invalidValue: 'Check the values at these field paths:', point: 'point', node: 'node', strand: 'Strand', eye: 'Eye',
   accessory: 'Accessory', x: 'X', y: 'Y', px: 'px',
 };
 const ja: typeof en = {
+  ...workflowJa,
   product: 'Mesh Avatar Studio', subtitle: 'イラストの動く範囲を調整',
-  tools: 'プロジェクト操作', openProject: 'プロジェクトを開く', openRig: '設定ファイルを開く…', openFolder: '画像フォルダーを開く…',
-  rigFile: '設定ファイルを開く', folderFiles: '画像フォルダーのファイルを開く', save: '設定を保存', undo: '元に戻す', redo: 'やり直す',
+  tools: 'プロジェクト操作', openProject: 'プロジェクトを開く', openRig: 'rig.json だけ読み込む…', openFolder: 'プロジェクトフォルダを選ぶ…',
+  rigFile: '設定ファイルを開く', folderFiles: 'プロジェクトフォルダのファイルを開く', save: '設定を保存', undo: '元に戻す', redo: 'やり直す',
+  projectHelp: 'プロジェクトは、AI エージェントがイラストから作ったフォルダです(rig.json・source.png・built/ を含む)。',
+  recent: '最近開いたプロジェクト', noRecent: '履歴はまだありません。', clearHistory: '履歴を消去', removeRecent: '履歴から削除',
+  reopenLast: '起動時に最後のプロジェクトを開く', browseAgain: 'フォルダを選び直す', missingRecent: 'プロジェクトが見つからないため、履歴から削除しました:',
+  localProjects: 'ローカルのプロジェクト', noProjects: 'プロジェクトはまだありません。', sampleProject: 'サンプル', updated: '更新',
+  drawnVariants: '目・口の差分画像あり', readOnly: '読み取り専用', copyPath: 'フルパスをコピー', copied: 'パスをコピーしました',
+  showFinder: 'フォルダを開く', showFolder: 'フォルダを開く', unknownPath: 'ブラウザで選択 · フルパスは取得できません',
+  savedTo: '保存しました:', saveError: 'プロジェクトを保存できませんでした。編集内容は画面に残っています。もう一度お試しください。', revealError: 'プロジェクトのフォルダを開けませんでした。', copyError: 'パスをコピーできませんでした。',
   help: 'ヘルプ', close: 'ヘルプを閉じる', language: '言語', english: '英語', japanese: '日本語', enCode: '英語', jaCode: '日本語',
   parts: 'パーツ', faceSection: '顔', hairSection: '髪・飾り', bodySection: '体', advanced: '詳細設定',
   notPresent: 'この設定にはありません', show: 'ガイドを表示', hide: 'ガイドを非表示', showAll: 'すべて表示', hideAll: 'すべて非表示',
@@ -52,6 +68,8 @@ const ja: typeof en = {
   panHint: 'スクロールで拡大・縮小 · スペース＋ドラッグで移動', noDots: '右の選択パーツ欄で数値を調整',
   preview: '動きのプレビュー', idle: '待機中の動き', play: '待機中の動きを再生', pause: '待機中の動きを一時停止',
   pose: 'ポーズ確認', reset: 'リセット', sweep: '角度を連続確認', stopSweep: '連続確認を停止',
+  lipSync: '口の動き', release: '解除', lipText: 'かなの文章', lipPlay: '再生', lipStop: '停止',
+  lipSpeed: '1秒あたりの拍数', lipLoop: '繰り返し', skippedKana: '読み飛ばす文字:', lipHelp: 'ひらがな・カタカナ・空白に対応。音声は再生しません。',
   sweepTip: '頭を最大角度まで動かし、画像の隙間や破れを確認します',
   turn: '顔を左右に向ける', look: '顔を上下に向ける', tilt: '頭を傾ける', eyeOpen: '目の開き', mouthOpen: '口の開き', bodyTilt: '体を傾ける',
   loading: '画像を読み込み中…', updating: 'プレビューを更新中…', ready: 'プレビューの準備完了', previewError: 'プレビューを読み込めませんでした',
@@ -60,9 +78,10 @@ const ja: typeof en = {
   guide3: '右のプレビューで動きを見る', gotIt: 'わかりました', shortcuts: 'キーボード・マウス操作', guideAgain: '使い方をもう一度表示',
   shortcutUndo: '元に戻す／やり直す', shortcutSave: '設定を保存', shortcutPan: '画像を移動', shortcutZoom: '画像を拡大・縮小',
   shortcutVertex: '点を追加／削除', spaceDrag: 'スペース＋ドラッグ', wheel: 'スクロール', vertexKeys: '線をダブルクリック／⌥＋点をクリック',
-  stale: '輪郭が変更されました。切り抜き画像の再生成機能は今後追加予定です。プレビューには変更前の画像を使っています。',
+  stale: '輪郭が変更されました。設定を保存し、build-layersを実行してからプロジェクトを開き直してください。プレビューには変更前の画像を使っています。',
   changedParts: '変更されたパーツ', checking: 'サンプル画像を確認中…', emptyTitle: 'プロジェクトを開く',
-  emptyHelp: '設定ファイルと画像フォルダーを開いてください。サンプル画像は別途用意が必要です。',
+  emptyHelp: '「プロジェクトを開く」の一覧から選ぶか、フォルダを指定してください。サンプル画像は別途用意が必要です。',
+  newProjectHelp: '新しいイラストでは、エージェントに手順書に沿ってプロジェクトを作るよう依頼してください。',
   invalidRig: '設定ファイルを開けませんでした。JSONの形式と次の項目を確認してください：',
   invalidFolder: 'フォルダーを開けませんでした。source.png、rig.json、layers.json とすべての切り抜き画像を用意してください。',
   invalidValue: '次の項目の数値を確認してください：', point: '点', node: '節点', strand: '髪の束', eye: '目',

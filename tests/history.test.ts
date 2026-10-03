@@ -26,3 +26,12 @@ test('a click with no change adds no history entry', () => {
   history.end();
   expect(history.canUndo).toBe(false);
 });
+test('opening another project drops edits and a pending gesture from the preceding project', () => {
+  const first = parseRig(fixture), second = setAt(first, 'head.cx', 999);
+  const history = new RigHistory(first);
+  history.change(setAt(first, 'head.cx', 630)); history.begin();
+  history.change(setAt(first, 'head.cx', 650)); history.load(second);
+  expect(history.canUndo).toBe(false); expect(history.canRedo).toBe(false);
+  expect(history.undo()).toEqual(second);
+  history.change(setAt(second, 'head.cx', 1000)); expect(history.undo()).toEqual(second);
+});

@@ -27,6 +27,11 @@ const PAUSE = new Set([...'、。，．,.！？!? 　…']);
 
 const toHiragana = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
 
+/** Unsupported characters, for explaining omissions in the editor. */
+export function skippedKanaCharacters(text) {
+  return [...new Set([...toHiragana(text)].filter(c => !VOWEL_OF[c] && !SMALL_Y[c] && c !== 'ー' && c !== 'っ' && c !== 'ん' && !PAUSE.has(c)))];
+}
+
 /** -> [{ vowel, dur, onset }] where onset is 'lips' | 'consonant' | null */
 export function kanaToMoras(text, mora = 0.14) {
   const out = [];
