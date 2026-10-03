@@ -88,7 +88,7 @@ main:has(.project-location):has(.stale) .editor-panel { height: calc(100dvh - 21
 .editor-canvas { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
 .canvas-help { min-height: 56px; display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .context-hint { flex: 1; line-height: 1.5; }
-.zoom-tools { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.zoom-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; align-items: center; flex-shrink: 0; }
 .zoom-tools button { padding: 5px 8px; font-size: 12px; }
 .handle-tooltip { position: absolute; z-index: 2; pointer-events: none; max-width: 210px; background: var(--ink); color: white; padding: 6px 8px; border-radius: 6px; font-size: 12px; box-shadow: 0 2px 8px #0002; }
 .right-column { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
@@ -224,3 +224,12 @@ main:has(.stale) .editor-panel, main:has(.stale) .parts-panel { height: calc(100
   .right-column { grid-column: 1; grid-template-columns: 1fr; }
   .inspector { max-height: 500px; }
 }
+
+.zoom-value { min-width: 60px; }
+.wheel-setting { display: flex; gap: 8px; align-items: center; justify-content: flex-end; font-size: 11px; color: var(--muted); padding: 4px 12px 8px; }
+.wheel-setting select { border: 1px solid var(--line); border-radius: 6px; padding: 3px; background: white; font-size: 11px; }
+.canvas-help { flex-wrap: wrap; }
+.agent-recipient { display: flex; gap: 4px; margin-top: 10px; }
+.agent-recipient button { font-size: 12px; padding: 5px 8px; }
+.agent-recipient button[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); border-color: #b3cdfa; }
+.agent-disclosure { font-size: 11px; color: var(--muted); margin: 6px 0; }

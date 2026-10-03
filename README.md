@@ -61,8 +61,9 @@ The guide recommends these setups:
 | Codex | GPT-6.1 Sol |
 
 The empty workspace offers a copyable project request. In **Drawn variants**, check
-**Eyes**, **Mouth**, or both to show a request for the current project. Open Codex in the
-displayed repository folder and paste the message. The development server automatically
+**Eyes**, **Mouth**, or both to show a request for the current project. Open the selected agent in the
+displayed repository folder and paste the message. Displayed home paths use `~`; path
+copy buttons copy the full path. The development server automatically
 loads changed sprites into the current view.
 
 ## Create a project from a new illustration
@@ -119,7 +120,14 @@ may need manual retouching. Inpainting approximates the artwork hidden behind ha
 
 - Drag a handle or select an item to edit its numeric fields.
 - Double-click a polygon/polyline edge to insert a vertex; Alt-click a vertex to remove it.
-- Use the mouse wheel to zoom at the cursor; Space-drag or middle-drag to pan; **Fit** resets the view.
+- Pinch to zoom at the cursor; two-finger scrolling pans. A mouse wheel zooms by default;
+  **Mouse wheel** can switch it to panning. Ctrl/Cmd-scroll always zooms.
+- Drag empty space, Space-drag or middle-drag to pan. Use **− / +** to zoom, the percentage
+  to return to 100% (one image pixel per screen pixel), **Fit** for the whole image, or
+  **Fit selected part** for the current part. Double-clicking a part in the list also fits it.
+  Zoom ranges from 10% to 1600%, while dots keep the same screen size.
+- Ctrl/Cmd+plus, minus, 0 and 1 zoom in, zoom out, fit and reset to 100%. These shortcuts
+  leave browser behavior alone when an input is focused.
 - **Undo** / **Redo** restore edits. Keyboard shortcuts: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl/Cmd+S.
 - **Save rig** saves a listed project, or downloads the JSON for a browser-picked folder.
   Dropping a JSON file also loads it.
@@ -130,8 +138,10 @@ may need manual retouching. Inpainting approximates the artwork hidden behind ha
   available; otherwise the mesh mouth animates. This check does not play audio.
 
 **Drawn variants** shows eye and mouth image counts. Check the drawings you want and
-copy the prepared agent message, which refers to the generation, import and review steps
-in the guide. Changes in the local project's `variants/` and `built/sprites/` directories
+copy the prepared message for **Codex** or **Claude Code**. Codex's message requests its
+built-in image generation, local import and pose review, and the card states that images
+will be sent to Codex image generation. Claude Code's message asks it to prepare masks
+and prompts and explain where to save the drawings, then stop. The recipient is remembered. Changes in the local project's `variants/` and `built/sprites/` directories
 reload in place, keeping unsaved outlines, selection, zoom and undo history. The sample's
 request asks the agent to work on a copy under `projects/`, leaving the original intact.
 
@@ -140,7 +150,8 @@ and prompts with `variant-requests.py`, or to drop or choose full-size PNGs with
 filenames. The editor validates dimensions and pixels outside the mask before building
 sprites; rejected imports keep the previous drawings and sprites. Manual export and import
 need a writable project from the development server. The app keeps images local; the
-agent request asks for your permission before sending images to an external generator.
+Codex card discloses the image-generation upload before you copy its request; other
+external services are excluded from that request.
 
 ## Verify
 

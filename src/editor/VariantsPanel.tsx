@@ -6,8 +6,8 @@ import { JobFeedback } from './JobFeedback';
 import { CopyButton } from './CopyButton';
 
 const labels = ['eyesClosed', 'eyesHalf', 'eyesSmile', 'mouthA', 'mouthAHalf', 'mouthI', 'mouthO'] as const;
-export function VariantsPanel({ project, projectPath, assets, rootPath, busy, stale, onRun, mouthRequest, onMouthPresence }: {
-  project: LocalProject | null; projectPath?: string; assets?: Record<string, string>; rootPath?: string; busy: boolean; stale: boolean;
+export function VariantsPanel({ project, projectPath, assets, rootPath, displayRootPath, busy, stale, onRun, mouthRequest, onMouthPresence }: {
+  project: LocalProject | null; projectPath?: string; assets?: Record<string, string>; rootPath?: string; displayRootPath?: string; busy: boolean; stale: boolean;
   onRun: (action: ProjectJob, files?: File[]) => Promise<JobResult>; mouthRequest: number; onMouthPresence: (present: boolean) => void;
 }) {
   const { t } = useI18n();
@@ -58,7 +58,7 @@ export function VariantsPanel({ project, projectPath, assets, rootPath, busy, st
         <label><input type="checkbox" checked={eyes} onChange={event => setEyes(event.target.checked)} aria-label={t.targetEyes} /><span>{t.targetEyes}<small>{t.eyesKinds}</small></span><span className="variant-count">{count('eyes_', 3)}</span></label>
         <label><input ref={mouthCheckbox} type="checkbox" checked={mouth} onChange={event => setMouth(event.target.checked)} aria-label={t.targetMouth} /><span>{t.targetMouth}<small>{t.mouthKinds}</small></span><span className="variant-count">{count('mouth_', 4)}</span></label>
       </div>
-      {(eyes || mouth) && projectPath && (projectPath.startsWith('<') ? <p className="workflow-note">{t.agentUnknownPath}</p> : <AskAgent rootPath={rootPath} projectPath={project?.readOnly || projectPath === 'samples/miko-qipao' ? 'projects/miko-qipao-variants' : projectPath} readOnlySource={project?.readOnly || projectPath === 'samples/miko-qipao' ? projectPath : undefined} target={target} />)}
+      {(eyes || mouth) && projectPath && (projectPath.startsWith('<') ? <p className="workflow-note">{t.agentUnknownPath}</p> : <AskAgent rootPath={rootPath} displayRootPath={displayRootPath} projectPath={project?.readOnly || projectPath === 'samples/miko-qipao' ? 'projects/miko-qipao-variants' : projectPath} readOnlySource={project?.readOnly || projectPath === 'samples/miko-qipao' ? projectPath : undefined} target={target} />)}
       <details className="manual-variants"><summary>{t.manualVariants}</summary>
         <p>{t.manualHelp}</p>
         {writable ? <button disabled={busy || stale} onClick={() => { void run('variant-requests'); }}>{busy ? t.operationBusy : t.createRequests}</button> : <p className="workflow-note">{t.variantsUnavailable}</p>}

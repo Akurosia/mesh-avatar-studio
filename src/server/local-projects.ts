@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { homedir } from 'node:os';
 import { readFile, readdir, realpath, stat, writeFile, rename, unlink } from 'node:fs/promises';
 import { resolve, relative, extname, sep } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -8,6 +9,7 @@ import { validateRig } from '../rig/validate';
 import { decodeVariants, JobError, projectJob, runTool, variantState, VARIANTS, type Runner } from './project-jobs';
 
 const SAMPLE = 'sample-miko-qipao';
+const displayPath = (path: string) => path === homedir() ? '~' : path.startsWith(`${homedir()}${sep}`) ? `~${path.slice(homedir().length)}` : path;
 const safeName = /^[A-Za-z0-9._-]+$/;
 class HttpError extends Error { constructor(public status: number, message: string) { super(message); } }
 const inside = (base: string, path: string) => { const rel = relative(base, path); return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !rel.startsWith(sep)); };
@@ -69,7 +71,7 @@ export function localProjectMiddleware(root: string, reveal = revealFolder, runn
     const draft = resolve(path, 'rig.draft.json');
     if (!await exists(rigPath) && !(await exists(draft) && await exists(resolve(path, 'built')))) return null;
     const file = await checked(path, await exists(rigPath) ? rigPath : draft);
-    return { name, relativePath: relative(root, path).split(sep).join('/'), absolutePath: path,
+    return { name, relativePath: relative(root, path).split(sep).join('/'), absolutePath: path, displayPath: displayPath(path),
       rigFile: await exists(rigPath) ? 'rig.json' : 'rig.draft.json',
       updatedAt: (await stat(file)).mtime.toISOString(), hasSprites: await exists(resolve(path, 'built/sprites/sprites.json')),
       hasVariants: await exists(resolve(path, 'variants')), readOnly: name === SAMPLE };
@@ -88,7 +90,7 @@ export function localProjectMiddleware(root: string, reveal = revealFolder, runn
         if (!safeName.test(value) || value === '.' || value === '..') throw new HttpError(400, 'Invalid path segment.');
         return value;
       });
-      if (parts.length === 1 && parts[0] === 'context' && req.method === 'GET') { json(200, { rootPath: root }); return; }
+      if (parts.length === 1 && parts[0] === 'context' && req.method === 'GET') { json(200, { rootPath: root, displayRootPath: displayPath(root) }); return; }
       if (parts.length === 1 && parts[0] === 'reveal' && req.method === 'POST') { await reveal(root); json(200, { path: root }); return; }
       if (parts[0] !== 'projects') throw new HttpError(404, 'Not found.');
       if (parts.length === 1 && req.method === 'GET') {

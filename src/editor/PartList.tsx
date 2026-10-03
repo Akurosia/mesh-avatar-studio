@@ -2,8 +2,8 @@ import type { Rig } from '../rig/types';
 import { useI18n, type PartGroup } from './i18n';
 import { PART_COLORS, partPresent, SECTIONS } from './parts';
 import { Icon } from './Icon';
-export function PartList({ rig, visible, selected, onSelect, onVisible }: {
-  rig: Rig; visible: string[]; selected: string | null; onSelect: (group: string) => void; onVisible: (groups: string[]) => void;
+export function PartList({ rig, visible, selected, onSelect, onFocus, onVisible }: {
+  rig: Rig; visible: string[]; selected: string | null; onSelect: (group: string) => void; onFocus: (group: string) => void; onVisible: (groups: string[]) => void;
 }) {
   const { t, parts } = useI18n();
   const section = (groups: readonly PartGroup[]) => {
@@ -20,7 +20,7 @@ export function PartList({ rig, visible, selected, onSelect, onVisible }: {
         return <div key={group} className={`part-row ${selected?.split('.')[0] === group ? 'is-selected' : ''} ${present ? '' : 'is-absent'}`}
           data-part={group} data-visible={shown}>
           <button className="part-select" data-testid={`part-${group}`} disabled={!present}
-            aria-pressed={selected?.split('.')[0] === group} onClick={() => onSelect(group)}>
+            aria-pressed={selected?.split('.')[0] === group} onClick={() => onSelect(group)} onDoubleClick={() => onFocus(group)}>
             <span className="part-swatch" style={{ background: PART_COLORS[group] }} />
             <span><strong>{parts[group][0]}</strong><small title={present ? parts[group][1] : t.notPresent}>{present ? parts[group][1] : t.notPresent}</small></span>
           </button>

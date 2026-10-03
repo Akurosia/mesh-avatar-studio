@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, expect, test, vi } from 'vitest';
 import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { Readable } from 'node:stream';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -41,8 +42,9 @@ test('lists eligible projects and the read-only installed sample, and serves pro
   const response = await call('/__studio/projects'); expect(response.status).toBe(200);
   const list = JSON.parse(response.body);
   expect(list.map((item: { name: string }) => item.name).sort()).toEqual(['draft', 'nova', 'sample-miko-qipao']);
-  expect(list.find((item: { name: string }) => item.name === 'nova')).toMatchObject({ relativePath: 'projects/nova', absolutePath: resolve(root, 'projects/nova'), hasSprites: true, hasVariants: true, readOnly: false });
+  expect(list.find((item: { name: string }) => item.name === 'nova')).toMatchObject({ relativePath: 'projects/nova', absolutePath: resolve(root, 'projects/nova'), displayPath: resolve(root, 'projects/nova').replace(homedir(), '~'), hasSprites: true, hasVariants: true, readOnly: false });
   expect(list.find((item: { name: string }) => item.name === 'sample-miko-qipao').readOnly).toBe(true);
+  expect(JSON.parse((await call('/__studio/context')).body)).toEqual({ rootPath: root, displayRootPath: root.replace(homedir(), '~') });
   const image = await call('/__studio/projects/nova/built/base.png');
   expect(image.status).toBe(200); expect(image.body).toBe('synthetic base bytes'); expect(image.headers['Content-Type']).toBe('image/png');
   expect((await call('/__studio/projects/nova/rig.json.bak')).status).toBe(404);

@@ -152,6 +152,8 @@ the rig is good enough: continue to Step 6, which removes them.
 
 ## Step 6 — Drawn variants (closed eyes, mouth shapes)
 
+Codex uses its built-in image generation (imagegen) for these variants.
+
 Blinking and talking look much better with drawn variants. Create the requests:
 
 ```sh

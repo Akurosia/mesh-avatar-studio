@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import { expect, test, type Page } from '@playwright/test';
 import { cp, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { resolve, basename, join } from 'node:path';
@@ -41,7 +42,7 @@ test('listed project saves in place with one backup, supports keyboard save, pat
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await open(page, name);
   const location = page.getByTestId('project-location'); await expect(location).toContainText(`projects/${name}`);
-  await expect(location.locator('.project-path')).toHaveAttribute('title', directory);
+  await expect(location.locator('.project-path')).toHaveAttribute('title', directory.replace(homedir(), '~'));
   await page.getByRole('button', { name: 'Copy full path' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(directory);
   await expect(page.getByTestId('project-location').getByRole('button', { name: '✓ Copied', exact: true })).toHaveAttribute('aria-live', 'polite');

@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { copyFile, lstat, mkdir, mkdtemp, readdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve, relative, dirname } from 'node:path';
@@ -11,7 +12,7 @@ export type Runner = (root: string, project: string, tool: Tool) => Promise<stri
 export const runTool: Runner = (root, project, tool) => new Promise((done, reject) => {
   const args = ['run', '--no-project', '--no-python-downloads', '--python', '>=3.10', '--with', 'numpy', '--with', 'pillow', '--with', 'opencv-python-headless', resolve(root, `tools/${tool}.py`), project];
   execFile('uv', args, { cwd: root, timeout: 120_000, maxBuffer: 2 * 1024 * 1024 }, (error, stdout, stderr) => {
-    const log = `${stdout}\n${stderr}`.replaceAll(root, '<repo>').trim().slice(-12000);
+    const log = `${stdout}\n${stderr}`.replaceAll(root, '<repo>').replaceAll(homedir(), '~').trim().slice(-12000);
     if (!error) { done(log); return; }
     const missing = (error as NodeJS.ErrnoException).code === 'ENOENT' || /No interpreter found|No Python installation|Python interpreter not found/i.test(log);
     reject(new JobError(missing ? 'dependencies' : 'toolFailed', log || (missing ? 'uv is not installed.' : 'The local tool did not finish.')));

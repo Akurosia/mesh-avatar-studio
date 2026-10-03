@@ -36,6 +36,7 @@ export interface LocalProject {
   name: string;
   relativePath: string;
   absolutePath: string;
+  displayPath?: string;
   updatedAt: string;
   hasSprites: boolean;
   hasVariants: boolean;
@@ -52,7 +53,7 @@ export async function localProjects(): Promise<LocalProject[] | null> {
   } catch { return null; }
 }
 const baseUrl = (project: LocalProject) => `/__studio/projects/${encodeURIComponent(project.name)}/`;
-export async function repositoryContext(): Promise<{ rootPath: string } | null> {
+export async function repositoryContext(): Promise<{ rootPath: string; displayRootPath: string } | null> {
   if (!import.meta.env.DEV) return null;
   try { const response = await fetch('/__studio/context'); return response.ok && response.headers.get('content-type')?.includes('application/json') ? await response.json() : null; } catch { return null; }
 }

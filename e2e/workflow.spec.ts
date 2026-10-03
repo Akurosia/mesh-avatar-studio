@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve, basename } from 'node:path';
 import { createHash } from 'node:crypto';
+import { homedir } from 'node:os';
 import { PNG } from 'pngjs';
 import fixture from '../samples/miko-qipao/rig.json' with { type: 'json' };
 import { dismissGuide, samplePresent, sampleSkipReason } from './sample';
@@ -42,8 +43,10 @@ async function drop(page: Page, bytes: Buffer, filename: string) {
 test('rebuild runs the real local tool, reloads changed pixels and keeps selection, zoom and undo history', async ({ page }) => {
   test.setTimeout(90000); await open(page); await editEye(page);
   const editor = page.getByTestId('editor'); const point = page.getByRole('spinbutton', { name: 'eyes.0.opening.0.0', exact: true });
+  const initialScale = Number(await editor.getAttribute('data-scale'));
   await editor.hover(); await page.mouse.wheel(0, -200);
-  await expect(page.locator('.zoom-tools > span')).toHaveText('122%');
+  await expect.poll(async () => Number(await editor.getAttribute('data-scale'))).toBeCloseTo(initialScale * Math.exp(0.2));
+  const zoomText = await page.getByTestId('zoom-value').textContent();
   const before = await pixels(page), base = await readFile(join(directory, 'built/base.png'));
   const beforeSize = await page.getByTestId('preview').evaluate(canvas => [(canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height]);
   const button = page.getByRole('button', { name: 'Save and rebuild layers', exact: true });
@@ -51,7 +54,7 @@ test('rebuild runs the real local tool, reloads changed pixels and keeps selecti
   await expect(page.getByTestId('preview-status')).toHaveAttribute('data-state', 'ready');
   expect(await page.getByTestId('preview').evaluate(canvas => [(canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height])).toEqual(beforeSize);
   expect(await pixels(page)).not.toBe(before); expect(await readFile(join(directory, 'built/base.png'))).not.toEqual(base);
-  await expect(editor).toHaveAttribute('data-focus-group', 'eyes'); await expect(page.locator('.zoom-tools > span')).toHaveText('122%');
+  await expect(editor).toHaveAttribute('data-focus-group', 'eyes'); await expect(page.getByTestId('zoom-value')).toHaveText(zoomText!);
   await expect(point).toHaveValue('451'); await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Undo', exact: true }).click(); await expect(point).toHaveValue('446');
   await expect(page.getByTestId('stale-banner')).toBeVisible();
@@ -77,7 +80,7 @@ test('requests provide masks, root handoff and prompts; drops accept valid drawi
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(resolve('.'));
   await agent.getByRole('button', { name: 'Copy message', exact: true }).click();
   const prompt = await page.evaluate(() => navigator.clipboard.readText()); expect(prompt).toContain(`projects/${name}`); expect(prompt).toContain('Step 6'); expect(prompt).toContain('mouth drawn variants');
-  expect(prompt).toContain('ask me before sending images to an external generator');
+  expect(prompt).toContain('The user has already consented to Codex image generation'); expect(prompt).toContain('Do not use other external services');
   await expect(agent.getByRole('button', { name: '✓ Copied', exact: true })).toHaveCount(2);
   await expect(agent.getByRole('button', { name: 'Copy message', exact: true })).toBeVisible({ timeout: 5000 });
   await expect(agent.locator('ol')).toHaveCount(0); await expect(panel.locator('select')).toHaveCount(0);
@@ -116,7 +119,7 @@ test('empty workspace has a single prompt copy and a one-line repository path, w
   await page.route('**/miko-qipao/**/*.png', route => route.fulfill({ status: 404, body: '' }));
   await page.route('**/miko-qipao/source.png', route => route.fulfill({ status: 404, body: '' }));
   await page.goto('/'); const card = page.getByTestId('ask-agent-new'); await expect(card).toBeVisible();
-  await expect(card.locator('.root-path')).toHaveText(resolve('.'));
+  await expect(card.locator('.root-path')).toHaveText(resolve('.').replace(homedir(), '~'));
   await card.getByRole('button', { name: 'Copy message', exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('projects/my-avatar');
   await expect(card.getByRole('button', { name: '✓ Copied', exact: true })).toHaveAttribute('aria-live', 'polite');
@@ -149,7 +152,10 @@ test('the read-only sample still gives a mouth request and keeps its source prot
 test('external sprite updates load automatically while keeping edited outlines, selection, zoom and undo', async ({ page, request }) => {
   test.setTimeout(90000); await page.setViewportSize({ width: 1440, height: 900 }); await open(page); await editEye(page);
   const point = page.getByRole('spinbutton', { name: 'eyes.0.opening.0.0', exact: true });
-  await page.getByTestId('editor').hover(); await page.mouse.wheel(0, -200); await expect(page.locator('.zoom-tools > span')).toHaveText('122%');
+  const initialScale = Number(await page.getByTestId('editor').getAttribute('data-scale'));
+  await page.getByTestId('editor').hover(); await page.mouse.wheel(0, -200);
+  await expect.poll(async () => Number(await page.getByTestId('editor').getAttribute('data-scale'))).toBeCloseTo(initialScale * Math.exp(0.2));
+  const zoomText = await page.getByTestId('zoom-value').textContent();
   await page.getByRole('tab', { name: 'Lip sync', exact: true }).click(); await page.getByRole('button', { name: 'あ', exact: true }).click(); await page.waitForTimeout(300);
   const before = await pixels(page);
   await page.screenshot({ path: 'docs/screenshots/ui4-auto-before-en-1440x900.png' });
@@ -168,7 +174,7 @@ test('external sprite updates load automatically while keeping edited outlines, 
   await page.screenshot({ path: 'docs/screenshots/ui4-auto-after-ja-1440x900.png' });
   await page.getByRole('button', { name: '英語', exact: true }).click();
   await expect(point).toHaveValue('451'); await expect(page.getByTestId('stale-banner')).toBeVisible();
-  await expect(page.getByTestId('editor')).toHaveAttribute('data-focus-group', 'eyes'); await expect(page.locator('.zoom-tools > span')).toHaveText('122%');
+  await expect(page.getByTestId('editor')).toHaveAttribute('data-focus-group', 'eyes'); await expect(page.getByTestId('zoom-value')).toHaveText(zoomText!);
   await page.getByRole('button', { name: 'Undo', exact: true }).click(); await expect(point).toHaveValue('446');
 });
 test('pose and lip tabs keep a large preview at 1440 by 900 in both languages', async ({ page }) => {
