@@ -3,20 +3,31 @@ import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { dismissGuide, samplePresent, sampleSkipReason } from './sample';
 
-test('paths and tooltips use ~ while copies keep full paths, and recipient changes persist', async ({ page, context }) => {
+test('paths stay hidden while copies keep full paths, folder buttons work and recipient changes persist', async ({ page, context }) => {
   test.skip(!samplePresent, sampleSkipReason); await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/'); await dismissGuide(page);
   await page.locator('.open-menu > summary').click(); await page.getByTestId('project-sample-miko-qipao').click();
   await page.getByTestId('variants-panel').getByRole('checkbox', { name: 'Mouth', exact: true }).check();
   const card = page.getByTestId('ask-agent-variants');
-  await expect(card.locator('.root-path')).toHaveText(resolve('.').replace(homedir(), '~'));
-  await expect(card.locator('.root-path')).toHaveAttribute('title', resolve('.').replace(homedir(), '~'));
-  await expect(page.getByTestId('project-location')).toContainText('~/');
-  await card.getByRole('button', { name: 'Copy full path', exact: true }).click(); expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(resolve('.'));
+  await expect(card.locator('.root-path')).toHaveCount(0);
+  const location = page.getByTestId('project-location');
+  await expect(location.locator('strong')).toHaveText('Sample project');
+  await expect(location.locator('.project-path')).toHaveCount(0);
+  await expect(location).not.toContainText('~/'); await expect(location).not.toContainText('samples/miko-qipao');
+  await location.getByRole('button', { name: 'Copy path', exact: true }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(resolve('samples/miko-qipao'));
+  const copyFolder = card.getByRole('button', { name: 'Copy folder path', exact: true });
+  await copyFolder.click(); expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(resolve('.'));
+  await expect(card.locator('.agent-folder-actions .copy-button')).toHaveText('✓ Copied');
+  let revealed = false;
+  await page.route('**/__studio/reveal', route => { revealed = true; return route.fulfill({ contentType: 'application/json', body: '{}' }); });
+  await card.getByRole('button', { name: 'Open folder', exact: true }).click(); await expect.poll(() => revealed).toBe(true);
   const leaked = await page.locator('main').evaluate((main, home) => {
     const text = (main as HTMLElement).innerText, attributes = [...main.querySelectorAll('*')].flatMap(element => [...element.attributes].map(attr => attr.value));
     return [text, ...attributes].filter(value => value.includes(home));
   }, homedir()); expect(leaked).toEqual([]);
+  const visiblePaths = await page.locator('[data-testid=project-location], .agent-folder-actions').evaluateAll(elements => elements.flatMap(element => [element.textContent ?? '', ...[element, ...element.querySelectorAll('*')].flatMap(child => [...child.attributes].map(attr => attr.value))]).filter(value => value.includes('~/') || value.includes('samples/miko-qipao')));
+  expect(visiblePaths).toEqual([]);
   await card.getByRole('button', { name: 'Copy message', exact: true }).click();
   const codex = await page.evaluate(() => navigator.clipboard.readText());
   for (const word of ['imagegen', 'source.png', 'variants/', 'build-sprites', 'render-poses', 'already consented', 'Do not use other external services']) expect(codex).toContain(word);
@@ -33,6 +44,13 @@ test('paths and tooltips use ~ while copies keep full paths, and recipient chang
   await card.getByRole('button', { name: 'Codex', exact: true }).click();
   await expect(card.getByText('画像は Codex の画像生成に送られます', { exact: true })).toBeVisible();
   await expect(card.getByRole('textbox')).toContainText('ユーザーは Codex の画像生成の利用に同意済み');
+  await expect(card.locator('.agent-instruction')).toHaveText('このリポジトリのフォルダで Codex を開いて、次の文章を貼ってください。');
+  await card.getByRole('button', { name: 'フォルダのパスをコピー', exact: true }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(resolve('.'));
+  await expect(card.locator('.agent-folder-actions .copy-button')).toHaveText('✓ コピーしました');
+  await expect(card.getByRole('button', { name: 'フォルダを開く', exact: true })).toBeVisible();
+  await page.route('**/__studio/reveal', route => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }));
+  await card.getByRole('button', { name: 'フォルダを開く', exact: true }).click(); await expect(card.getByRole('alert')).toBeVisible();
 });
 test('blocked preference storage still allows recipient and wheel mode changes', async ({ page }) => {
   test.skip(!samplePresent, sampleSkipReason);

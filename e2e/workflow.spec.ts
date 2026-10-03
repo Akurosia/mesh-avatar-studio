@@ -2,7 +2,6 @@ import { test, expect, type Page } from '@playwright/test';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve, basename } from 'node:path';
 import { createHash } from 'node:crypto';
-import { homedir } from 'node:os';
 import { PNG } from 'pngjs';
 import fixture from '../samples/miko-qipao/rig.json' with { type: 'json' };
 import { dismissGuide, samplePresent, sampleSkipReason } from './sample';
@@ -76,7 +75,7 @@ test('requests provide masks, root handoff and prompts; drops accept valid drawi
   await expect(panel.getByTestId('ask-agent-variants')).toHaveCount(0);
   await expect(panel.locator('.manual-variants')).not.toHaveAttribute('open', '');
   await panel.getByRole('checkbox', { name: 'Mouth', exact: true }).check();
-  const agent = page.getByTestId('ask-agent-variants'); await agent.getByRole('button', { name: 'Copy full path', exact: true }).click();
+  const agent = page.getByTestId('ask-agent-variants'); await agent.getByRole('button', { name: 'Copy folder path', exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(resolve('.'));
   await agent.getByRole('button', { name: 'Copy message', exact: true }).click();
   const prompt = await page.evaluate(() => navigator.clipboard.readText()); expect(prompt).toContain(`projects/${name}`); expect(prompt).toContain('Step 6'); expect(prompt).toContain('mouth drawn variants');
@@ -112,19 +111,21 @@ test('requests provide masks, root handoff and prompts; drops accept valid drawi
   await expect(panel.getByRole('alert')).toContainText('Pixels outside the edit mask changed.', { timeout: 60000 });
   expect(await readFile(join(directory, 'variants/mouth_a.png'))).toEqual(savedVariant); expect(await readFile(join(directory, 'built/sprites/sprites.json'))).toEqual(savedManifest);
   await panel.getByText('Measured comparison outside the mask', { exact: true }).click(); await expect(panel.locator('.job-feedback')).toContainText('Maximum difference');
-  await expect(page.getByTestId('project-location')).toContainText(`projects/${name}`);
+  await expect(page.getByTestId('project-location')).toContainText(name);
 });
-test('empty workspace has a single prompt copy and a one-line repository path, without extra steps', async ({ page, context }) => {
+test('empty workspace offers folder actions and a single prompt copy without a visible repository path', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.route('**/miko-qipao/**/*.png', route => route.fulfill({ status: 404, body: '' }));
   await page.route('**/miko-qipao/source.png', route => route.fulfill({ status: 404, body: '' }));
   await page.goto('/'); const card = page.getByTestId('ask-agent-new'); await expect(card).toBeVisible();
-  await expect(card.locator('.root-path')).toHaveText(resolve('.').replace(homedir(), '~'));
+  await expect(card.locator('.root-path')).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'Copy folder path', exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Open folder', exact: true })).toBeVisible();
   await card.getByRole('button', { name: 'Copy message', exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('projects/my-avatar');
   await expect(card.getByRole('button', { name: '✓ Copied', exact: true })).toHaveAttribute('aria-live', 'polite');
   await expect(card.getByRole('button', { name: 'Copy message', exact: true })).toBeVisible({ timeout: 5000 });
-  await expect(card.getByRole('button')).toHaveCount(2); await expect(card.locator('ol')).toHaveCount(0);
+  await expect(card.getByRole('button')).toHaveCount(3); await expect(card.locator('ol')).toHaveCount(0);
   await expect(card.getByRole('button', { name: 'Reload project', exact: true })).toHaveCount(0);
 });
 test('eye and mouth checkboxes immediately adapt the prompt and lip fallback opens the mouth request', async ({ page }) => {
@@ -139,7 +140,7 @@ test('eye and mouth checkboxes immediately adapt the prompt and lip fallback ope
   await expect(page.locator('.mouth-fallback')).toContainText('using mesh deformation');
   await page.locator('.mouth-fallback button').click();
   await expect(panel).toHaveAttribute('open', ''); await expect(panel.getByRole('checkbox', { name: 'Mouth', exact: true })).toBeChecked();
-  await expect(prompt).toContainText(`projects/${name}`); await expect(prompt).toBeVisible();
+  await expect(prompt).toContainText(name); await expect(prompt).toBeVisible();
 });
 test('the read-only sample still gives a mouth request and keeps its source protected', async ({ page }) => {
   await page.goto('/'); await dismissGuide(page);

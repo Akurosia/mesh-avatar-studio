@@ -48,13 +48,12 @@ function Workspace() {
   const [saving, setSaving] = useState(false);
   const [opening, setOpening] = useState(false);
   const [rootPath, setRootPath] = useState<string>();
-  const [displayRootPath, setDisplayRootPath] = useState<string>();
   const [focusRequest, setFocusRequest] = useState<{ group: string; id: number }>();
   const [mouthSprites, setMouthSprites] = useState(true), [mouthRequest, setMouthRequest] = useState(0);
   const [job, setJob] = useState<ProjectJob | null>(null);
   const jobRef = useRef<ProjectJob | null>(null);
   const [rebuildError, setRebuildError] = useState<ProjectJobError | null>(null);
-  useEffect(() => { void repositoryContext().then(context => { setRootPath(context?.rootPath); setDisplayRootPath(context?.displayRootPath); }); }, []);
+  useEffect(() => { void repositoryContext().then(context => { setRootPath(context?.rootPath); }); }, []);
   const [recent, setRecent] = useState(readRecent);
   const [reopen, setReopen] = useState(() => readPreference(REOPEN_KEY) !== '0');
   const remember = (entry: RecentProject) => {
@@ -343,7 +342,6 @@ function Workspace() {
     </header>
     {(localProject || pickedName) && <div className="project-location" data-testid="project-location">
       <strong>{localProject?.readOnly ? t.sampleProject : localProject?.name || pickedName}</strong>
-      <span className="project-path" title={localProject?.displayPath ?? localProject?.relativePath}>{localProject?.displayPath ?? localProject?.relativePath ?? t.unknownPath}</span>
       {localProject && <><CopyButton value={localProject.absolutePath} label={t.copyPath} icon />
       <button className="icon-button" aria-label={navigator.platform.includes('Mac') ? t.showFinder : t.showFolder} title={navigator.platform.includes('Mac') ? t.showFinder : t.showFolder} onClick={() => { void reveal(); }}><Icon name="folder" /></button>
       {localProject.readOnly && <span className="badge">{t.readOnly}</span>}</>}
@@ -354,7 +352,7 @@ function Workspace() {
       {localProject && !localProject.readOnly ? <button className="primary" disabled={job !== null || saving} onClick={() => { setRebuildError(null); void runJob('rebuild').catch(error => setRebuildError(error instanceof ProjectJobError ? error : new ProjectJobError('toolFailed'))); }}>{job === 'rebuild' ? t.rebuilding : t.rebuild}</button> : <p>{t.rebuildUnavailable}</p>}
       {rebuildError && <JobFeedback error={rebuildError} />}
     </div>}
-    {!sourceUrl && <section className="panel empty-project"><h2>{checking ? t.checking : t.emptyTitle}</h2><p>{t.projectHelp}</p><p>{t.emptyHelp}</p>{recentControl}<AskAgent newProject rootPath={rootPath} displayRootPath={displayRootPath} />{errorNotice}</section>}
+    {!sourceUrl && <section className="panel empty-project"><h2>{checking ? t.checking : t.emptyTitle}</h2><p>{t.projectHelp}</p><p>{t.emptyHelp}</p>{recentControl}<AskAgent newProject rootPath={rootPath} />{errorNotice}</section>}
     {sourceUrl && <div className="workspace">
       <div className="parts-container" inert={job !== null}><PartList rig={rig} visible={visible} selected={selected} onSelect={selectPart} onFocus={group => { selectPart(group); setFocusRequest(current => ({ group, id: (current?.id ?? 0) + 1 })); }} onVisible={setVisible} /></div>
       <section className="panel editor-panel" inert={job !== null}>
@@ -368,8 +366,8 @@ function Workspace() {
       </section>
       <div className="right-column">
         <Preview rig={rig} assets={assets} hasMouthSprites={mouthSprites} onDrawMouth={() => setMouthRequest(value => value + 1)} />
-        <VariantsPanel project={localProject} projectPath={localProject?.relativePath ?? (pickedName ? `<${pickedName}>` : 'samples/miko-qipao')} assets={assets} rootPath={rootPath} displayRootPath={displayRootPath} busy={job !== null || saving} stale={changed.length > 0} onRun={runJob} mouthRequest={mouthRequest} onMouthPresence={setMouthSprites} />
-        {!localProject && !pickedName && <details className="panel new-illustration"><summary>{t.newIllustration}</summary><AskAgent newProject rootPath={rootPath} displayRootPath={displayRootPath} /></details>}
+        <VariantsPanel project={localProject} projectPath={localProject?.relativePath ?? (pickedName ? `<${pickedName}>` : 'samples/miko-qipao')} assets={assets} rootPath={rootPath} busy={job !== null || saving} stale={changed.length > 0} onRun={runJob} mouthRequest={mouthRequest} onMouthPresence={setMouthSprites} />
+        {!localProject && !pickedName && <details className="panel new-illustration"><summary>{t.newIllustration}</summary><AskAgent newProject rootPath={rootPath} /></details>}
         <aside className="panel inspector" inert={job !== null}>
           <div className="selection-heading"><h2>{selectedPart?.[0] ?? t.selection}</h2></div>
           {errorNotice}

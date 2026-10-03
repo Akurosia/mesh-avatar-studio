@@ -1,4 +1,3 @@
-import { homedir } from 'node:os';
 import { expect, test, type Page } from '@playwright/test';
 import { cp, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { resolve, basename, join } from 'node:path';
@@ -41,12 +40,15 @@ async function hashMouth(page: Page) {
 test('listed project saves in place with one backup, supports keyboard save, path copy and stubbed reveal', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await open(page, name);
-  const location = page.getByTestId('project-location'); await expect(location).toContainText(`projects/${name}`);
-  await expect(location.locator('.project-path')).toHaveAttribute('title', directory.replace(homedir(), '~'));
-  await page.getByRole('button', { name: 'Copy full path' }).click();
+  const location = page.getByTestId('project-location'); await expect(location).toContainText(name);
+  await expect(location.locator('strong')).toHaveText(name);
+  await expect(location.locator('.project-path')).toHaveCount(0);
+  await expect(location).not.toContainText('projects/');
+  await expect(location.getByRole('button', { name: 'Copy path', exact: true })).toHaveAttribute('title', 'Copy path');
+  await page.getByRole('button', { name: 'Copy path' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(directory);
   await expect(page.getByTestId('project-location').getByRole('button', { name: '✓ Copied', exact: true })).toHaveAttribute('aria-live', 'polite');
-  await expect(page.getByTestId('project-location').getByRole('button', { name: 'Copy full path', exact: true })).toBeVisible({ timeout: 5000 });
+  await expect(page.getByTestId('project-location').getByRole('button', { name: 'Copy path', exact: true })).toBeVisible({ timeout: 5000 });
   let revealed = false;
   await page.route(`**/__studio/projects/${name}/reveal`, route => { revealed = true; return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ path: directory }) }); });
   await location.locator('button').last().click(); await expect.poll(() => revealed).toBe(true);
@@ -100,7 +102,8 @@ test('unavailable local server keeps the project picker and rig download without
   await expect(page.getByRole('button', { name: 'Browse for a project folder…', exact: true })).toBeVisible();
   await page.getByLabel('Open project folder files', { exact: true }).setInputFiles(directory);
   await expect(page.getByTestId('preview-status')).toHaveAttribute('data-state', 'ready');
-  await expect(page.getByTestId('project-location')).toContainText('full path unavailable');
+  await expect(page.getByTestId('project-location')).toContainText(name);
+  await expect(page.getByTestId('project-location').getByRole('button')).toHaveCount(0);
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Save rig', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('rig.json'); expect(errors).toEqual([]);
 });
@@ -122,17 +125,17 @@ test('recent projects persist in order, auto-reopen, remove missing entries, and
   await page.getByRole('spinbutton', { name: 'head.cx', exact: true }).fill('555');
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeEnabled();
   await page.locator('.open-menu > summary').click(); await page.getByTestId('project-sample-miko-qipao').click();
-  await expect(page.getByTestId('project-location')).toContainText('samples/miko-qipao');
+  await expect(page.getByTestId('project-location')).toContainText('Sample project');
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled();
   await page.reload();
-  await expect(page.getByTestId('project-location')).toContainText('samples/miko-qipao');
+  await expect(page.getByTestId('project-location')).toContainText('Sample project');
   await page.locator('.open-menu > summary').click();
   const menu = page.locator('.project-menu');
   const ids = await menu.locator('.recent-row > button:first-child').evaluateAll(buttons => buttons.map(button => button.getAttribute('data-testid')));
   expect(ids.slice(0, 2)).toEqual(['recent-server:sample-miko-qipao', `recent-server:${name}`]);
   await menu.getByTestId(`recent-server:${name}`).click();
-  await expect(page.getByTestId('project-location')).toContainText(`projects/${name}`);
-  await page.reload(); await expect(page.getByTestId('project-location')).toContainText(`projects/${name}`);
+  await expect(page.getByTestId('project-location')).toContainText(name);
+  await page.reload(); await expect(page.getByTestId('project-location')).toContainText(name);
   await page.evaluate(() => {
     const key = 'mesh-avatar-recent-projects', entries = JSON.parse(localStorage.getItem(key)!);
     entries.unshift({ id: 'server:missing-ui-test', kind: 'server', name: 'missing-ui-test', serverName: 'missing-ui-test', relativePath: 'projects/missing-ui-test', lastOpened: new Date().toISOString() });
