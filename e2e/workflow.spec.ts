@@ -170,7 +170,11 @@ test('external sprite updates load automatically while keeping edited outlines, 
   await expect(page.getByTestId('preview-status')).toHaveAttribute('data-state', 'ready'); await page.waitForTimeout(300);
   expect(await pixels(page)).not.toBe(before); await expect(page.locator('.mouth-fallback')).toHaveCount(0);
   await page.screenshot({ path: 'docs/screenshots/ui4-auto-after-en-1440x900.png' });
+  // Notices expire. Check Japanese on a new update, not by translating an old notice.
+  await expect(page.locator('.save-notice')).toHaveCount(0, { timeout: 10000 });
   await page.getByRole('button', { name: '日本語', exact: true }).click();
+  const manifest = join(directory, 'built/sprites/sprites.json');
+  await writeFile(manifest, await readFile(manifest));
   await expect(page.getByRole('status').filter({ hasText: '描き分け画像を読み込みました' })).toBeVisible();
   await page.screenshot({ path: 'docs/screenshots/ui4-auto-after-ja-1440x900.png' });
   await page.getByRole('button', { name: '英語', exact: true }).click();

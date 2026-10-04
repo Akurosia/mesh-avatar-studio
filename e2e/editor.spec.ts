@@ -71,13 +71,15 @@ test('rebuilds from cached assets, marks cut-outs stale, and sweeps angles', asy
   await page.getByTestId('part-eyes').click();
   await page.getByText(`1 · Opening (${fixture.eyes[0].opening.length})`, { exact: true }).click();
   await page.getByRole('spinbutton', { name: 'eyes.0.opening.0.0', exact: true }).fill('451');
-  await expect(page.getByText(/Outlines changed/)).toBeVisible();
+  const stale = page.getByTestId('stale-banner');
+  await expect(stale).toContainText('The sample is read-only. To continue editing, copy it into a project.');
+  await expect(stale.getByRole('button', { name: 'Copy and continue editing', exact: true })).toBeVisible();
   await expect.poll(async () => Number(await canvas.getAttribute('data-revision'))).toBeGreaterThan(revision + 1);
   await expect(page.getByText('Engine ready', { exact: true })).toBeVisible();
   expect(assets.length).toBe(count);
   await page.screenshot({ path: 'docs/screenshots/stale.png' });
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await expect(page.getByText(/Outlines changed/)).toBeHidden();
+  await expect(stale).toHaveCount(0);
   await page.getByRole('button', { name: 'Sweep angles', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Stop sweep' })).toBeVisible();
   for (let frame = 0; frame < 3; frame++) {
