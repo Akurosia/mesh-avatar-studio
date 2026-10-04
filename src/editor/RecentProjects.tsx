@@ -6,7 +6,7 @@ export function RecentProjects({ recent, projects, reopen, onOpen, onRemove, onC
   recent: RecentProject[]; projects: LocalProject[] | null; reopen: boolean;
   onOpen(entry: RecentProject): void; onRemove(id: string): void; onClear(): void; onReopen(value: boolean): void;
 }) {
-  const { t, language } = useI18n();
+  const { t, locale } = useI18n();
   return <section className="recent-projects" aria-label={t.recent}>
     <div className="recent-heading"><h3>{t.recent}</h3>{recent.length > 0 && <button onClick={onClear}>{t.clearHistory}</button>}</div>
     {recent.length === 0 && <p className="recent-empty">{t.noRecent}</p>}
@@ -15,7 +15,7 @@ export function RecentProjects({ recent, projects, reopen, onOpen, onRemove, onC
       return <div key={entry.id} className="recent-row">
         <button data-testid={`recent-${entry.id}`} onClick={() => onOpen(entry)}>
           <strong>{entry.serverName === 'sample-miko-qipao' ? t.sampleProject : entry.name}</strong>
-          <small>{entry.relativePath} · {new Date(entry.lastOpened).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-GB')}</small>
+          <small>{entry.relativePath} · {new Date(entry.lastOpened).toLocaleString(locale)}</small>
           {browse && <small>{t.browseAgain}</small>}
         </button><button className="remove-recent" aria-label={`${t.removeRecent} ${entry.name}`} onClick={() => onRemove(entry.id)}>×</button>
       </div>;
