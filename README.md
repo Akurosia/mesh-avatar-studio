@@ -1,169 +1,93 @@
 # Mesh Avatar Studio
 
-Edit a mesh avatar rig over a source illustration and preview its animation locally in your browser.
-Drag centers, pivots, strand nodes and polygon vertices; resize Gaussian regions; adjust numeric
-fields; and test face angles, eye and mouth openings, breathing and secondary motion.
+[日本語](README.ja.md)
 
-## Run
+Turn a single illustration into an animated 2D mesh avatar: it blinks, talks, turns its head,
+breathes and sways its hair. A coding agent prepares the avatar from your image; you fine-tune
+it in a local editor with a live preview.
 
-The editor requires Node.js 20.19+ or 22.12+. The agent command-line tools require 22.17+.
+![The editor with the Miko sample](docs/images/en/01-overview.png)
+
+## Try the sample
+
+Requires Node.js 22.17+.
 
 ```sh
 npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite. Choose **Open project** and select a project from the local
-list, or use **Browse for a project folder…** to select its folder. A project contains
-`rig.json`, `source.png` and `built/`. **Load rig.json only…** replaces the rig without loading images.
-The header shows a listed project's path; copy the full path or open its folder in your file manager.
-**Save rig** and Ctrl/Cmd+S save a listed project directly to `rig.json`, keeping the previous
-file as `rig.json.bak`. The sample is read-only, and browser-picked folders use a JSON download.
-Local project access is available only through the development server on 127.0.0.1; a static
-build keeps the folder picker and download workflow. Images stay on this machine.
-**Recent** keeps up to ten opened projects in this browser and can reopen the last project
-on start. Remove individual entries, clear the history, or disable automatic reopening in
-the project menu. Supported browsers retain a directory handle for picked folders and may
-ask for permission again; other browsers show **Browse again**. Image data is never stored
-in this history.
+Open the URL printed in the terminal (for example `http://127.0.0.1:5173/`). The editor opens
+the bundled sample, Miko in a qipao. Pick a part on the left, drag its dots on the image and
+watch the preview on the right. The sample is read-only; when you change it, choose
+**Copy and keep editing** to continue in your own copy.
 
-```text
-project/
-  rig.json
-  source.png
-  built/
-    layers.json
-    base.png
-    hairmask.png
-    eye0_ball.png
-    ...other cut-out layers named in layers.json
-    sprites/                 # optional drawn eye/mouth variants
-      sprites.json
-      ...sprite images
-```
+## How it works
 
-The repository includes a ready-made sample, `samples/miko-qipao/`: Miko in a qipao, with her
-source image, cut-out layers, drawn eye and mouth variants and rig. The editor opens it on first
-launch, read-only; use **Copy and keep editing** to make an editable copy under `projects/`.
+Making an avatar from your own illustration takes four steps. Steps 1 and 4 are done by a
+coding agent (Claude Code or Codex) working in this repository; steps 2 and 3 happen in the
+editor.
 
-## Create an avatar with your coding agent
+### 1. Ask your agent to create the avatar
 
-Give your illustration to a coding agent working in this repository and ask it to follow
-[the agent guide](docs/agent-guide.md). The agent calibrates its coordinate reading, prepares
-the rig with zoomed grids, builds local layers and reviews fixed poses before handing the
-project back for editing. Images and generated files stay in the ignored `projects/` folder.
-The guide recommends these setups:
+Open Claude Code or Codex in this repository folder and give it your illustration:
+
+> Create an avatar from this image following docs/agent-guide.md: `/path/to/your-image.png`
+
+The agent follows [the agent guide](docs/agent-guide.md): it checks how accurately it reads
+coordinates, places the rig on zoomed grids, cuts the image into layers and reviews the
+avatar in fixed poses. The project is saved in `projects/<name>/`, which is never committed.
+Best results come from a front-facing, head-and-shoulders PNG with a transparent background.
+When no project is open, the editor shows this request ready to copy.
+
+![The request for a new avatar](docs/images/en/06-new-project.png)
+
+Recommended setups:
 
 | Agent | Model |
 |---|---|
 | Claude Code | Claude Opus 5.5 |
 | Codex | GPT-6.1 Sol |
 
-The empty workspace offers a copyable project request. In **Drawn variants**, check
-**Eyes**, **Mouth**, or both to show a request for the current project. Open the selected agent in the
-displayed repository folder and paste the message. Displayed home paths use `~`; path
-copy buttons copy the full path. The development server automatically
-loads changed sprites into the current view.
+### 2. Open the project and check it
 
-## Create a project from a new illustration
+Start the editor (`npm run dev`), choose **Open project** and pick your project from the list.
+In the preview, use **Pose test** to turn and tilt the head and close the eyes, and
+**Lip sync** to check the vowel mouth shapes.
 
-The layer builder requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
-It runs locally with NumPy, Pillow and OpenCV; these are build tools, not browser dependencies.
-The other Python tools declare dependencies inline for bare `uv run`. The validator and
-pose renderer use Node.js 22.17+; install Node dependencies with `npm ci` and Chromium with
-`npx playwright install chromium` if needed. [Rig field descriptions](docs/rig-fields.md)
-explain coordinates and placement.
+![Lip sync check](docs/images/en/03-lip-sync.png)
 
-1. Create a project folder and put your illustration in `source.png`. A PNG with a transparent
-   background works. Use a copy of your artwork when experimenting.
-2. Prepare `rig.draft.json`. Use `samples/miko-qipao/rig.json` as a schema example, set `image.width`
-   and `image.height` to your image dimensions, and place the geometry in source-image pixels.
-   Trace each eye's `opening` inside the lashes and its enclosing `roi` around the lash and lid
-   strokes. Place hair strand `nodes` from root to tip. Remove `hand`, `buns` and `accessories`
-   if absent; keep the required head, body, face, mouth, cheeks, mesh and view settings.
-   The eye fields `x0`, `x1`, `top` and `bot` can be omitted from the draft.
-3. From the repository root, build the layers:
+### 3. Fix what looks wrong by dragging
 
-   ```sh
-   uv run --with numpy --with pillow --with opencv-python-headless tools/build-layers.py /path/to/project --rig rig.draft.json
-   ```
+Select a part on the left. Its dots are highlighted on the image; drag them to fix the
+placement. The preview follows your changes immediately. Some values also decide how the image
+is cut into layers: eye and hand outlines, and the head, hair and bun areas used for the hair
+mask. After changing those, a banner appears; choose **Save and rebuild layers** there. It takes
+a few seconds.
 
-   This writes `rig.json` with 24 sampled points for each eye's top and bottom curves, plus
-   `built/base.png`, `built/hairmask.png`, the four `eye{i}_ball/lash/low/crease.png` layers per
-   eye, and `built/layers.json`. Hand and accessory layers are generated only when present
-   in the rig. The input draft remains unchanged. Existing generated files are replaced;
-   optional drawn sprites are preserved. Without `--rig`, the input is `rig.json`.
-4. In the editor, choose **Open project** and select it from the list, or browse for the whole project
-   folder, including `source.png`, `rig.json` and `built/`. Use **Pose test** to check blinking
-   and face angles, and **Sweep angles** to check the full motion range.
+![Editing the eye outline](docs/images/en/02-edit-handles.png)
 
-The builder estimates eyelid skin and line colours near each eye's ROI, and hair colours near
-the strand lines and buns. It follows connected colour regions within the head, buns and
-strand areas, using nearby skin and body colours to exclude non-hair pixels. Bright hair
-highlights or hair with several unrelated colours can leave gaps in the inferred mask.
-It does not trace eyes or invent hidden artwork automatically. Incorrect
-outlines can leave eye pixels behind during a blink or include skin in a moving layer. Inspect
-the result and adjust the rig in the editor. For a writable project opened from the local
-list, use **Save and rebuild layers** in the changed-outlines banner. It runs the local
-builder and reloads the preview, keeping selection, zoom and undo history. A failed build
-keeps the previous layers and offers a log. Browser-picked folders still require saving
-the JSON, running the command without `--rig`, and reopening the folder. Keep the original draft separately
-if you want to retain it. Drawn closed-eye and mouth variants are optional.
+![Rebuilding layers after changing an outline](docs/images/en/04-rebuild.png)
 
-Accessory colour masks currently use the rig's red-dominance thresholds (`color.redness` and
-`color.minRed`) inside each `box`. Hair and skin estimation assumes reasonably opaque pixels
-around the traced regions; fully translucent artwork or unrelated colours inside an eye ROI
-may need manual retouching. Inpainting approximates the artwork hidden behind hands and eyes.
+Zoom with a pinch or Ctrl/Cmd+scroll, pan with two fingers or by dragging empty space, and use
+**Fit selected part** to jump to the current part.
 
-## Editing
+### 4. Get drawn eyes and mouths
 
-- Drag a handle or select an item to edit its numeric fields.
-- Double-click a polygon/polyline edge to insert a vertex; Alt-click a vertex to remove it.
-- Pinch to zoom at the cursor; two-finger scrolling pans. A mouse wheel zooms by default;
-  **Mouse wheel** can switch it to panning. Ctrl/Cmd-scroll always zooms.
-- Drag empty space, Space-drag or middle-drag to pan. Use **− / +** to zoom, the percentage
-  to return to 100% (one image pixel per screen pixel), **Fit** for the whole image, or
-  **Fit selected part** for the current part. Double-clicking a part in the list also fits it.
-  Zoom ranges from 10% to 1600%, while dots keep the same screen size.
-- Ctrl/Cmd+plus, minus, 0 and 1 zoom in, zoom out, fit and reset to 100%. These shortcuts
-  leave browser behavior alone when an input is focused.
-- **Undo** / **Redo** restore edits. Keyboard shortcuts: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl/Cmd+S.
-- **Save rig** saves a listed project, or downloads the JSON for a browser-picked folder.
-  Dropping a JSON file also loads it.
-- Pause **Idle motion** for a stable pose comparison, or use **Sweep angles** to sweep angles.
-- Switch between the **Pose test** and **Lip sync** tabs under the preview. **Lip sync**
-  holds あ・い・う・え・お・ん, or plays kana text at 4–12 morae per second.
-  **Release** / **Stop** return control to the pose sliders. Drawn mouth images are used when
-  available; otherwise the mesh mouth animates. This check does not play audio.
+Without drawings, the eyes and mouth move by mesh deformation alone. Drawn closed eyes and
+vowel mouths make blinking and talking look much more natural. In **Drawn variants**, check
+**Eyes**, **Mouth** or both, copy the message and paste it into Codex opened in this
+repository folder. Codex draws them with its built-in image generation and imports them; the
+editor reloads them automatically. (Claude Code cannot generate images; its message prepares
+the masks and prompts for you to hand to an image generator.)
 
-**Drawn variants** shows eye and mouth image counts. Check the drawings you want and
-copy the prepared message for **Codex** or **Claude Code**. Codex's message requests its
-built-in image generation, local import and pose review, and the card states that images
-will be sent to Codex image generation. Claude Code's message asks it to prepare masks
-and prompts and explain where to save the drawings, then stop. The recipient is remembered. Changes in the local project's `variants/` and `built/sprites/` directories
-reload in place, keeping unsaved outlines, selection, zoom and undo history. The sample's
-request asks the agent to work on a copy under `projects/`, leaving the original intact.
+![Requesting drawn mouths](docs/images/en/05-variants.png)
 
-**If you prepare images yourself** is collapsed by default. Open it to export local masks
-and prompts with `variant-requests.py`, or to drop or choose full-size PNGs with the listed
-filenames. The editor validates dimensions and pixels outside the mask before building
-sprites; rejected imports keep the previous drawings and sprites. Manual export and import
-need a writable project from the development server. The app keeps images local; the
-Codex card discloses the image-generation upload before you copy its request; other
-external services are excluded from that request.
+## More
 
-## Verify
-
-```sh
-npm run lint
-npm test
-npm run build
-uv run --with numpy --with pillow --with opencv-python-headless tools/test_build_layers.py
-npx playwright install chromium
-npm run e2e
-```
-
-`docs/screenshots/` stores local visual verification evidence and is excluded from version control.
+- [Agent guide](docs/agent-guide.md): the step-by-step procedure agents follow
+- [Reference](docs/reference.md): projects, building layers by hand, all editor controls, tests
+- [Rig fields](docs/rig-fields.md): what every value in `rig.json` means
 
 ## License
 
