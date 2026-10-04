@@ -84,7 +84,7 @@ export async function runProjectJob(project: LocalProject, action: ProjectJob, r
   }
   const response = await fetch(`${baseUrl(project)}${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const result = await response.json();
-  if (!response.ok) throw new ProjectJobError(result.code ?? (response.status === 400 ? 'invalidImages' : 'toolFailed'), result.log ?? result.error);
+  if (!response.ok) throw new ProjectJobError(result.code ?? (response.status === 400 && action === 'import-variants' ? 'invalidImages' : 'toolFailed'), result.log ?? result.error);
   return result;
 }
 export async function projectVariantRequests(project: LocalProject): Promise<VariantRequest[]> {

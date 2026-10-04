@@ -1,3 +1,4 @@
+import { editorNumber, isIntegerField } from '../rig/numeric';
 import type { Point, Rig } from '../rig/types';
 
 export interface Viewport { scale: number; x: number; y: number }
@@ -31,7 +32,7 @@ export function setAt(rig: Rig, path: string, value: unknown): Rig {
   const parts = path.split('.');
   let target = next as unknown as Record<string, unknown>;
   for (const part of parts.slice(0, -1)) target = target[part] as Record<string, unknown>;
-  target[parts.at(-1)!] = value;
+  target[parts.at(-1)!] = typeof value === 'number' ? editorNumber(path, value) : value;
   return next;
 }
 export function numericFields(value: unknown, path: string): { path: string; value: number }[] {
@@ -56,15 +57,15 @@ export function nearestHandle(handles: Handle[], point: Point, view: Viewport, t
   return nearest;
 }
 export function moveHandle(rig: Rig, handle: Handle, point: Point): Rig {
-  const rounded = (value: number) => Math.round(value * 10) / 10;
+  const rounded = (value: number, path: string) => isIntegerField(path) ? Math.round(value) : Math.round(value * 10) / 10;
   if (handle.radius) {
     const { center, axis, angle } = handle.radius;
     const dx = point[0] - center[0], dy = point[1] - center[1];
     const amount = axis === 'x' ? dx * Math.cos(angle) + dy * Math.sin(angle)
       : -dx * Math.sin(angle) + dy * Math.cos(angle);
-    return setAt(rig, handle.xPath, Math.max(1, rounded(Math.abs(amount))));
+    return setAt(rig, handle.xPath, Math.max(1, rounded(Math.abs(amount), handle.xPath)));
   }
-  return setAt(setAt(rig, handle.xPath, rounded(point[0])), handle.yPath!, rounded(point[1]));
+  return setAt(setAt(rig, handle.xPath, rounded(point[0], handle.xPath)), handle.yPath!, rounded(point[1], handle.yPath!));
 }
 export function changeVertex(rig: Rig, path: string, index: number, point: Point | null, closed: boolean): Rig {
   const points = structuredClone(getAt(rig, path)) as Point[];

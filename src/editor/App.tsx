@@ -371,7 +371,7 @@ function Workspace() {
     {help && <Help onClose={() => setHelp(false)} onGuide={() => { setGuide(true); setHelp(false); }} />}
     {(dragStale ?? changed.length > 0) && <div className="stale" data-testid="stale-banner"><p role="status">{localProject && !localProject.readOnly ? t.staleLocal : sampleEditing ? t.staleSample : listedProject ? t.staleListed : t.stale}</p><small>{t.changedParts}: {changed.map(key => parts[key as PartGroup]?.[0] ?? title(key)).join(' · ')}</small>
       {localProject && !localProject.readOnly ? <button className="primary" disabled={job !== null || saving} onClick={() => { setRebuildError(null); void runJob('rebuild').catch(error => setRebuildError(error instanceof ProjectJobError ? error : new ProjectJobError('toolFailed'))); }}>{job === 'rebuild' ? t.rebuilding : t.rebuild}</button> : <><small>{sampleEditing ? t.sampleRebuildReason : t.folderRebuildReason}</small>{sampleEditing || listedProject ? <button className="primary" disabled={opening || saving || job !== null || (sampleEditing && !rootPath)} onClick={() => { void continueEditing(); }}>{opening ? t.operationBusy : sampleEditing ? t.copyContinue : t.reopenListed}</button> : <p>{t.rebuildUnavailable}</p>}</>}
-      {rebuildError && <JobFeedback error={rebuildError} />}
+      {rebuildError && <JobFeedback error={rebuildError} rig={rig} />}
       {error?.kind === 'continueError' && errorNotice}
     </div>}
     {!sourceUrl && <section className="panel empty-project"><h2>{checking ? t.checking : t.emptyTitle}</h2><p>{t.projectHelp}</p><p>{t.emptyHelp}</p>{recentControl}<AskAgent newProject rootPath={rootPath} />{errorNotice}</section>}

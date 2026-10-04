@@ -40,3 +40,16 @@ test('draft validation permits omitted generated curves without weakening comple
   partial.eyes[0].opening = [[1, 2], [3, 4]];
   expect(validateRig(partial, { draft: true }).join()).toContain('rig.eyes[0].opening');
 });
+
+
+test('rejects fractional and out-of-image accessory boxes and fractional mesh values', () => {
+  for (const box of [[856, 279, 1075.9, 482.7], [-1, 279, 1000, 480], [856, 279, 1255, 480], [856, 279, 1000, 1255], [900, 279, 900, 480]]) {
+    const rig = parseRig(fixture); rig.accessories![1].box = box as [number, number, number, number];
+    expect(validateRig(rig).join()).toContain('rig.accessories[1].box');
+  }
+  for (const key of ['baseCell', 'handCell', 'tasselCell', 'eyeBallCell', 'eyeCell', 'spriteCell'] as const) {
+    const rig = parseRig(fixture); rig.mesh[key] = 3.5; expect(validateRig(rig).join()).toContain(`rig.mesh.${key}`);
+  }
+  const rig = parseRig(fixture); rig.mesh.fine.x0 = 340.2; rig.mesh.fine.cell = 7.2;
+  expect(validateRig(rig).join()).toContain('rig.mesh.fine.x0'); expect(validateRig(rig).join()).toContain('rig.mesh.fine.cell');
+});

@@ -8,6 +8,7 @@ Run with: uv run --with numpy --with pillow --with opencv-python-headless
 import argparse
 import hashlib
 import json
+import math
 import re
 import sys
 import tempfile
@@ -478,15 +479,23 @@ def validate_inputs(rig, rgba):
             )
         names.add(name)
         box = accessory["box"]
-        if (
-            len(box) != 4
-            or not 0 <= box[0] < box[2] <= w
-            or not 0 <= box[1] < box[3] <= h
-            or any(int(n) != n for n in box)
+        if len(box) != 4 or any(
+            not isinstance(n, (int, float)) or not math.isfinite(n) for n in box
         ):
-            raise ValueError(
-                f"accessories[{i}].box must be an integer rectangle inside the image"
-            )
+            raise ValueError(f"accessories[{i}].box must contain four finite coordinates")
+        if box[0] >= box[2] or box[1] >= box[3]:
+            raise ValueError(f"accessories[{i}].box must have positive width and height")
+        rounded = [
+            max(0, min(w, math.floor(box[0]))),
+            max(0, min(h, math.floor(box[1]))),
+            max(0, min(w, math.ceil(box[2]))),
+            max(0, min(h, math.ceil(box[3]))),
+        ]
+        if rounded[0] >= rounded[2] or rounded[1] >= rounded[3]:
+            raise ValueError(f"accessories[{i}].box has no area inside the image")
+        if rounded != box:
+            print(f"accessories[{i}].box rounded outward and clipped: {box} -> {rounded}")
+        accessory["box"] = rounded
         colour = accessory["color"]
         if not 0 <= colour["redness"] <= 1 or not 0 <= colour["minRed"] <= 255:
             raise ValueError(f"accessories[{i}].color thresholds are out of range")

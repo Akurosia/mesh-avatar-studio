@@ -108,6 +108,44 @@ class BuildLayersTest(unittest.TestCase):
                     (self.project / "built/layers.json").read_text(), "existing layers"
                 )
 
+    def test_accessory_boxes_round_outward_clip_and_keep_valid_integers(self):
+        for box, expected in [
+            ([10.2, 20.8, 30.1, 40.2], [10, 20, 31, 41]),
+            ([-5.2, -3.1, 101.7, 81.2], [0, 0, 100, 80]),
+            ([10, 20, 30, 40], [10, 20, 30, 40]),
+        ]:
+            with self.subTest(box=box):
+                self.rig["accessories"] = [{"name": "tassel", "box": box, "color": {"redness": 0.5, "minRed": 60}}]
+                # Add source pixels that satisfy the accessory's colour thresholds.
+                with Image.open(self.project / "source.png") as original:
+                    image = original.convert("RGBA")
+                ImageDraw.Draw(image).rectangle((22, 21, 25, 25), fill=(220, 30, 30, 255))
+                image.save(self.project / "source.png")
+                self.draft.write_text(json.dumps(self.rig))
+                result = self.run_cli()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                saved = json.loads((self.project / "rig.json").read_text())
+                self.assertEqual(saved["accessories"][0]["box"], expected)
+                self.assertTrue(all(isinstance(n, int) for n in saved["accessories"][0]["box"]))
+                if expected != box:
+                    self.assertIn("rounded outward and clipped", result.stdout)
+                else:
+                    self.assertNotIn("rounded outward and clipped", result.stdout)
+
+    def test_collapsed_or_nonfinite_boxes_fail_without_replacing_output(self):
+        (self.project / "rig.json").write_text("existing rig")
+        (self.project / "built").mkdir()
+        (self.project / "built/layers.json").write_text("existing layers")
+        for box in [[101, 20, 110, 40], [20, 80, 30, 90], [20, 20, 20, 40], [30.5, 20, 30.4, 40], [float("nan"), 20, 30, 40]]:
+            with self.subTest(box=box):
+                self.rig["accessories"] = [{"name": "tassel", "box": box, "color": {"redness": 0.5, "minRed": 60}}]
+                self.draft.write_text(json.dumps(self.rig))
+                result = self.run_cli()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("accessories[0].box", result.stderr)
+                self.assertEqual((self.project / "rig.json").read_text(), "existing rig")
+                self.assertEqual((self.project / "built/layers.json").read_text(), "existing layers")
+
     def test_sampled_eye_curves_match_existing_fixture(self):
         rig = json.loads((ROOT / "samples/miko-qipao/rig.json").read_text())
         for eye in rig["eyes"]:

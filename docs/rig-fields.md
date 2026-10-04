@@ -3,7 +3,8 @@
 Version 1 uses the original `source.png` coordinate system: origin at the top left, x right,
 y down. Coordinates, radii, lengths, grid spacing and bands are **source pixels**; angles are
 **radians**, not the degrees used by the pose sliders. All numbers must be finite. Ellipse
-radii and mesh cell sizes must be positive. A band is `[start, end]` with `start < end`.
+radii and mesh cell sizes must be positive. Mesh cell sizes and fine-mesh rectangle
+coordinates must be integers. Accessory boxes must be integer rectangles inside the image. A band is `[start, end]` with `start < end`.
 Ellipses are smooth influence regions, not hard cut-out boundaries.
 
 Only `buns`, `strands`, `accessories`, `hand` and `view.gazeCenter` are optional. Omit absent

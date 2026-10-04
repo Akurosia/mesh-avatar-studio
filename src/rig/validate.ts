@@ -12,6 +12,10 @@ const integer: Check = (v, p, e) => {
   positive(v, p, e);
   if (typeof v === 'number' && !Number.isInteger(v)) e.push(`${p}: expected an integer`);
 };
+const wholeNumber: Check = (v, p, e) => {
+  number(v, p, e);
+  if (typeof v === 'number' && !Number.isInteger(v)) e.push(`${p}: expected an integer`);
+};
 const string: Check = (v, p, e) => {
   if (typeof v !== 'string' || !v.trim()) e.push(`${p}: expected a non-empty string`);
 };
@@ -59,14 +63,14 @@ const schema = (draft: boolean) => object({
   cheeks: array(point, 2, 2),
   strands: array(object({ name: string, nodes: line, sigma: positive, k: positive, max: positive })),
   accessories: array(object({ name: string, pivot: point, tip: point, split: unit,
-    box: array(number, 4, 4), color: object({ redness: unit, minRed: number }) })),
+    box: array(wholeNumber, 4, 4), color: object({ redness: unit, minRed: number }) })),
   hand: object({ outline: polygon, jaw: line, jawRange: band, background: polygon,
     elbow: point, wrist: point, knuckle: point, contact: point, forearmShare: unit,
     armBand: band, wristBand: band, handBand: band, fingerXBand: band,
     fingerYBand: band, pinBand: band }),
-  mesh: object({ baseCell: positive, fine: object({ x0: number, x1: number,
-    y0: number, y1: number, cell: positive }), handCell: positive,
-    tasselCell: positive, eyeBallCell: positive, eyeCell: positive, spriteCell: positive }),
+  mesh: object({ baseCell: integer, fine: object({ x0: wholeNumber, x1: wholeNumber,
+    y0: wholeNumber, y1: wholeNumber, cell: integer }), handCell: integer,
+    tasselCell: integer, eyeBallCell: integer, eyeCell: integer, spriteCell: integer }),
   view: object({ padTop: number, padSide: number, gazeCenter: point }, ['gazeCenter']),
 }, ['buns', 'strands', 'accessories', 'hand']);
 
@@ -94,6 +98,8 @@ export function validateRig(value: unknown, options: { draft?: boolean } = {}): 
       errors.push(`rig.strands[${i}].nodes: consecutive nodes must differ`);
   }
   for (const [i, accessory] of (rig.accessories ?? []).entries()) {
+    if (accessory.box[0] < 0 || accessory.box[1] < 0 || accessory.box[2] > rig.image.width || accessory.box[3] > rig.image.height)
+      errors.push(`rig.accessories[${i}].box: rectangle must stay inside the image`);
     if (accessory.split <= 0 || accessory.split >= 1) errors.push(`rig.accessories[${i}].split: must be strictly between 0 and 1`);
     if (accessory.pivot.every((n, k) => n === accessory.tip[k])) errors.push(`rig.accessories[${i}].tip: must differ from pivot`);
     if (accessory.box[0] >= accessory.box[2] || accessory.box[1] >= accessory.box[3]) errors.push(`rig.accessories[${i}].box: rectangle must have positive area`);

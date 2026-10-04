@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { editorNumber, isIntegerField } from '../rig/numeric';
 
 export function NumericField({ path, value, label, onChange }: {
   path: string; label?: string; value: number; onChange: (value: number) => void;
@@ -7,11 +8,12 @@ export function NumericField({ path, value, label, onChange }: {
   useEffect(() => setDraft(String(value)), [value]);
   return (
     <label title={path}><span>{label}</span>
-      <input type="number" step="0.1" aria-label={path} value={draft}
+      <input type="number" step={isIntegerField(path) ? 1 : 0.1} aria-label={path} value={draft}
         onChange={event => {
-          setDraft(event.target.value);
           const number = event.target.valueAsNumber;
-          if (Number.isFinite(number)) onChange(number);
+          const rounded = editorNumber(path, number);
+          setDraft(Number.isFinite(number) && isIntegerField(path) ? String(rounded) : event.target.value);
+          if (Number.isFinite(number)) onChange(rounded);
         }}
         onBlur={() => setDraft(String(value))} /><small className="field-path">{path}</small>
     </label>
