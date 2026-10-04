@@ -28,7 +28,7 @@ function errorPaths(value: string) { return [...new Set(value.match(/rig(?:\.[\w
 
 export function App() { return <I18nProvider><Workspace /></I18nProvider>; }
 function Workspace() {
-  const { t, parts, language, setLanguage, title } = useI18n();
+  const { t, parts, language, locale, setLanguage, title } = useI18n();
   const openMenu = useRef<HTMLDetailsElement>(null);
   const [guide, setGuide] = useState(() => readPreference(GUIDE_KEY) !== '1');
   const [help, setHelp] = useState(false);
@@ -342,7 +342,7 @@ function Workspace() {
               {projects.length === 0 && <p>{t.noProjects}</p>}
               {projects.map(project => <button key={project.name} disabled={opening} data-testid={`project-${project.name}`} onClick={() => { void openLocal(project); }}>
                 <strong>{project.readOnly ? t.sampleProject : project.name}</strong><small>{project.relativePath}</small>
-                <small>{t.updated}: {new Date(project.updatedAt).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-GB')}
+                <small>{t.updated}: {new Date(project.updatedAt).toLocaleString(locale)}
                   {project.hasSprites && <span className="badge">{t.drawnVariants}</span>}{project.readOnly && <span className="badge">{t.readOnly}</span>}</small>
               </button>)}
             </div>}
@@ -358,6 +358,7 @@ function Workspace() {
         <div className="language-toggle" role="group" aria-label={t.language}>
           <button aria-label={t.english} aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>{t.enCode}</button>
           <button aria-label={t.japanese} aria-pressed={language === 'ja'} onClick={() => setLanguage('ja')}>{t.jaCode}</button>
+          <button aria-label={t.chinese} aria-pressed={language === 'zh'} onClick={() => setLanguage('zh')}>{t.zhCode}</button>
         </div>
       </nav>
     </header>
