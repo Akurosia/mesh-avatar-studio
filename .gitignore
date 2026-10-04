@@ -5,10 +5,6 @@ dist/
 docs/screenshots/
 test-results/
 playwright-report/
-samples/**/*.png
-samples/**/*.jpg
-samples/**/*.jpeg
-samples/**/*.webp
 __pycache__/
 projects/
 work/

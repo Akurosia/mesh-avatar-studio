@@ -42,10 +42,9 @@ project/
       ...sprite images
 ```
 
-Source and cut-out images are not bundled. If you have the matching miko-qipao sample images, place
-`source.png` under `samples/miko-qipao/` and the cut-out images under `samples/miko-qipao/built/`.
-The app loads the sample automatically when its images are available. Otherwise it opens an
-empty workspace. The included JSON files describe geometry and asset rectangles.
+The repository includes a ready-made sample, `samples/miko-qipao/`: Miko in a qipao, with her
+source image, cut-out layers, drawn eye and mouth variants and rig. The editor opens it on first
+launch, read-only; use **Copy and keep editing** to make an editable copy under `projects/`.
 
 ## Create an avatar with your coding agent
 
@@ -164,6 +163,15 @@ npx playwright install chromium
 npm run e2e
 ```
 
-Tests that require sample images report a reason and skip when those images are absent.
-Geometry, validation, history, sensitivity and empty-workspace checks still run.
 `docs/screenshots/` stores local visual verification evidence and is excluded from version control.
+
+## License
+
+The code is released under the [MIT License](LICENSE).
+
+The sample character Miko (`samples/miko-qipao/`) is not covered by the MIT License. Miko is the
+character of AITuber OnAir, © Yuki Shindo (AITuber OnAir), and her images are provided under the
+[Miko Character Usage Guidelines](https://miko.aituberonair.com/#terms); see
+[samples/miko-qipao/MIKO_ASSET_TERMS.md](samples/miko-qipao/MIKO_ASSET_TERMS.md). They may be used
+and modified as part of your own works, but not redistributed on their own or as an asset
+collection. This project is not an official AITuber OnAir product.
