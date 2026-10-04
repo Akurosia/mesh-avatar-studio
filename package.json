@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "screenshots": "node tools/capture-readme-screenshots.mjs",
     "test": "vitest run",
     "lint": "eslint src tests e2e tools/*.mjs",
     "build": "tsc --noEmit && vite build",
