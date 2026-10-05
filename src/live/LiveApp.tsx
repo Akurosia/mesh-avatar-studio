@@ -5,6 +5,7 @@ import { viewSettings, streamUrl, backgroundColor } from './settings';
 import { FacePose, type TrackingOptions } from './tracking';
 import { CameraCapture, MicrophoneCapture, type CameraState, type MicState } from './media';
 import { liveText } from './i18n';
+import { createLiveSender } from './relay';
 
 export function LiveApp() {
   const { language, setLanguage } = useI18n(), t = liveText[language];
@@ -33,6 +34,7 @@ export function LiveApp() {
   }, []);
   useEffect(() => {
     let cancelled = false, view: Awaited<ReturnType<typeof createAvatarView>> | undefined;
+    const send = createLiveSender(settings.project);
     setViewState('loading');
     void createAvatarView(canvas.current!, settings, (avatar, now, dt) => {
       const control = controls.current, sampled = pose.current.sample(now, dt, control.options);
@@ -41,6 +43,8 @@ export function LiveApp() {
       avatar.setParameters(sampled.params, sampled.weight);
       const micOn = control.micState === 'micOn';
       avatar.setSpeaking(micOn); avatar.setVoiceLevel(micOn ? microphone.current?.level(control.gain) ?? 0 : 0);
+    }, (avatar, now) => {
+      if (controls.current.cameraState === 'running' || controls.current.micState === 'micOn') send(avatar.getParameters(), now);
     }).then(value => { if (cancelled) value.destroy(); else { view = value; setViewState('ready'); } }).catch(() => { if (!cancelled) setViewState('projectError'); });
     return () => { cancelled = true; view?.destroy(); };
   }, [settings.project, settings.fit]);

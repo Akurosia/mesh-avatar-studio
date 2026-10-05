@@ -73,7 +73,9 @@ export class FacePose {
   reset() { this.face = null; this.neutral = null; this.seen = -Infinity; }
   sample(now: number, dt: number, options: TrackingOptions) {
     const tracking = !!this.face && now - this.seen <= 500;
-    this.params = smoothParameters(this.params, tracking ? mapFace(this.face!, this.neutral, options) : faceNeutral, dt, tracking ? options.smoothing : 0.7);
+    const target = tracking ? mapFace(this.face!, this.neutral, options) : faceNeutral;
+    this.params = smoothParameters(this.params, target, dt, tracking ? options.smoothing : 0.7);
+    if (tracking) for (const eye of ['eyeLOpen', 'eyeROpen']) if (target[eye] === 0) this.params[eye] = 0;
     this.weight = tracking ? 1 : this.weight * Math.exp(-dt / 0.2);
     if (this.weight < 0.005) this.weight = 0;
     return { tracking, params: { ...this.params }, weight: this.weight };

@@ -27,6 +27,8 @@ test('mirror flips horizontal pose and gaze, swaps eyes, and blink closes fully'
   expect(normal.eyeLOpen).toBe(0); expect(normal.eyeROpen).toBe(1);
   expect(mirror.eyeROpen).toBe(0); expect(mirror.eyeLOpen).toBe(1);
   expect(mirror.angleX).toBe(-normal.angleX); expect(mirror.gazeX).toBe(-normal.gazeX);
+  const pose = new FacePose(); pose.update(result(0, { eyeBlinkLeft: 0.95 }), 0);
+  expect(pose.sample(1, 1 / 60, { ...options, smoothing: 1 }).params.eyeLOpen).toBe(0);
 });
 test('calibration normalizes relaxed eyes, mouth shapes, eyebrows and smile', () => {
   const neutral = readFace(result(0, { eyeBlinkLeft: 0.2, jawOpen: 0.1 }))!;

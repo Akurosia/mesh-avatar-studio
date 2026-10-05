@@ -94,6 +94,19 @@ the masks and prompts for you to hand to an image generator.)
 
 ![Requesting drawn mouths](docs/images/en/05-variants.png)
 
+## Live and streaming
+
+Open your project in the editor and choose **Live**. Start the camera, face forward with
+relaxed eyes and a closed mouth, then choose **Calibrate**. You can adjust mirroring,
+sensitivity and smoothing, or enable microphone lip sync. Camera video and microphone
+audio stay on your machine; only numeric avatar motion values reach the stream view.
+
+Choose a background and **Copy OBS URL**. Keep the Live page open and add the URL as an
+OBS **Browser Source**, for example at **1080 × 1080**. The transparent background works
+directly in OBS. For other capture software, choose green and apply a chroma key.
+Both pages use the local development server (`npm run dev`). The stream view shows idle
+motion when the Live page stops sending updates.
+
 ## More
 
 - [Agent guide](docs/agent-guide.md): the step-by-step procedure agents follow

@@ -12,6 +12,9 @@ and `package-lock.json`. Its JavaScript and WASM are licensed under Apache-2.0.
 Vite serves the installed WASM files at `/mediapipe/` and includes them, this model,
 and these notices in builds. No CDN or remote model request is needed at runtime.
 
-This version is retained to avoid the metrics reporting present in newer releases.
-Check runtime network behavior before updating it. Camera frames and microphone audio
-are processed locally and are never included in relay messages.
+This version is retained because version 1.0.1 includes metrics reporting to an external
+service. Before upgrading, inspect the JavaScript bundle and WASM loading scripts for
+telemetry and remote asset URLs, then run the live and stream network-isolation tests
+with the real tracker initialized. All assets must still load locally, with no outbound
+requests. Camera frames and microphone audio are processed locally and are never
+included in relay messages.
