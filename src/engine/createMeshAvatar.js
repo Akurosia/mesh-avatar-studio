@@ -139,15 +139,17 @@ export async function createMeshAvatarImpl(canvas, options) {
   const listeners = new Set();
   motion.onMotion = id => { for (const fn of listeners) fn(id); };
 
-  let parameters = {};
+  let parameters = {}, parameterWeight = 1, lastParameters = {};
   const tmp = [0, 0];
   function tick(dt) {
-    const P = { ...motion.update(dt), ...parameters };
+    const P = { ...motion.update(dt) };
+    for (const [key, value] of Object.entries(parameters)) P[key] = parameterWeight === 1 ? value : (P[key] ?? 0) + (value - (P[key] ?? 0)) * parameterWeight;
     // Speech owns the mouth while active; explicit pose sliders still own all other parameters.
     if (motion.lipOpen !== null) {
       P.mouthOpen = motion.P.mouthOpen;
-      P.mouthForm = motion.P.mouthForm;
+      if (!options.preserveMouthForm || parameters.mouthForm === undefined) P.mouthForm = motion.P.mouthForm;
     }
+    lastParameters = P;
     const phys = physics.step(P, dt);
 
     const bp = baseMesh.pos, br = baseMesh.rest;
@@ -208,7 +210,8 @@ export async function createMeshAvatarImpl(canvas, options) {
 
   return {
     motions: motionList,
-    setParameters(values) { parameters = { ...values }; },
+    setParameters(values, weight = 1) { parameters = { ...values }; parameterWeight = Math.min(1, Math.max(0, Number(weight) || 0)); },
+    getParameters() { return { ...lastParameters }; },
     /** 0..1 loudness of the voice being played (e.g. normalised RMS). */
     setVoiceLevel(v) { motion.setVoiceLevel(v); },
     /** true while TTS audio is playing: idle motions pause and the head nods along. */
