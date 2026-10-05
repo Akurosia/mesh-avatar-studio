@@ -86,7 +86,7 @@ export async function createMeshAvatarImpl(canvas, options) {
   // The source image is cut flat at its top edge (crown and right bun). A negative top margin
   // keeps the top ~88px (7%) above the canvas, which the layout puts at the top of the panel:
   // the cut stays off screen even at the deepest head tilt.
-  const R = new Renderer(canvas, { padTop: options.padTop ?? rig.view.padTop, padSide: options.padSide ?? rig.view.padSide });
+  const R = new Renderer(canvas, { padTop: options.padTop ?? rig.view.padTop, padSide: options.padSide ?? rig.view.padSide, fit: options.fit });
   const rects = { base: [0, 0, IMG.w, IMG.h], ...meta.layers };
 
   // base layer, denser where hair strands bend and the face parts shift

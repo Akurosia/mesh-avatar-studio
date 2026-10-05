@@ -9,6 +9,7 @@ export interface MeshAvatarOptions {
   manual?: boolean;
   padTop?: number;
   padSide?: number;
+  fit?: 'contain' | 'cover';
 }
 export interface MeshAvatar {
   readonly motions: { id: string; label: string; idle: boolean }[];

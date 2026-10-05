@@ -18,5 +18,6 @@ export default defineConfig({
     },
   }],
   publicDir: 'samples',
+  build: { rollupOptions: { input: { editor: 'index.html', stream: 'stream.html' } } },
   test: { include: ['tests/**/*.test.ts'] },
 });
