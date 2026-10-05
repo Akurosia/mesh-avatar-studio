@@ -36,7 +36,10 @@ export const uiZh = {
   emptyHelp: '从“打开项目”的列表中选择项目，或选择项目文件夹。',
   newProjectHelp: '想从新的插画开始？让编程助手按照制作指南准备一个项目。',
   invalidRig: '无法打开绑定配置。请检查 JSON 格式及以下字段：',
-  invalidFolder: '无法打开此文件夹。请确保包含 source.png、rig.json、layers.json 和所有拆分图层图片。',
+  invalidFolder: '无法打开此文件夹。请检查 rig.json 和 layers.json 的内容是否有效。',
+  missingFolderFiles: '缺少必需文件。请确保包含 source.png、layers.json 和所有拆分图层图片。',
+  unreadableFolder: '无法读取文件或文件夹。请检查访问权限，或是否正被其他应用占用，然后重试。',
+  unreadableProject: '无法读取此项目。请检查访问权限，或文件是否正被占用。',
   invalidValue: '请检查以下字段的数值：', point: '控制点', node: '节点', strand: '发束', eye: '眼睛',
   accessory: '饰品', x: '横向 X', y: '纵向 Y', px: '像素',
 };

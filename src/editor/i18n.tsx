@@ -44,7 +44,10 @@ const en = {
   emptyHelp: 'Choose a project from Open project, or browse for its folder.',
   newProjectHelp: 'Starting from a new illustration? Ask your agent to prepare a project using the agent guide.',
   invalidRig: 'Could not open the rig file. Check the JSON and these field paths:',
-  invalidFolder: 'Could not open this folder. Include source.png, rig.json, layers.json and every cut-out image.',
+  invalidFolder: 'Could not open this folder. Check rig.json and layers.json for invalid data.',
+  missingFolderFiles: 'Required files are missing. Include source.png, layers.json and every cut-out image.',
+  unreadableFolder: 'A file or folder could not be read. Check access permissions and whether another app is using it, then try again.',
+  unreadableProject: 'Cannot read this project. Check permissions or whether the file is in use.',
   invalidValue: 'Check the values at these field paths:', point: 'point', node: 'node', strand: 'Strand', eye: 'Eye',
   accessory: 'Accessory', x: 'X', y: 'Y', px: 'px',
 };
@@ -84,7 +87,10 @@ const ja: typeof en = {
   emptyHelp: '「プロジェクトを開く」の一覧から選ぶか、フォルダを指定してください。',
   newProjectHelp: '新しいイラストでは、エージェントに手順書に沿ってプロジェクトを作るよう依頼してください。',
   invalidRig: '設定ファイルを開けませんでした。JSONの形式と次の項目を確認してください：',
-  invalidFolder: 'フォルダーを開けませんでした。source.png、rig.json、layers.json とすべての切り抜き画像を用意してください。',
+  invalidFolder: 'フォルダを開けませんでした。rig.json と layers.json の内容を確認してください。',
+  missingFolderFiles: '必要なファイルが足りません。source.png、layers.json とすべての切り抜き画像を用意してください。',
+  unreadableFolder: 'ファイルまたはフォルダを読み取れませんでした。アクセス権限や、別のアプリで使用中でないかを確認して、もう一度お試しください。',
+  unreadableProject: 'このプロジェクトは読み取れません。アクセス権限や、ファイルが使用中でないかを確認してください。',
   invalidValue: '次の項目の数値を確認してください：', point: '点', node: '節点', strand: '髪の束', eye: '目',
   accessory: '飾り', x: '横', y: '縦', px: '画素',
 };
