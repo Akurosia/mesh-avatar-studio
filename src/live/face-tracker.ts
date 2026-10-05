@@ -1,14 +1,9 @@
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+import type { FaceResult } from './tracking';
 
-export async function createFaceTracker() {
-  const files = await FilesetResolver.forVisionTasks('/mediapipe');
-  const options = { runningMode: 'VIDEO' as const, numFaces: 1, outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true };
-  let tracker: FaceLandmarker;
-  let delegate: 'GPU' | 'CPU' = 'GPU';
-  try { tracker = await FaceLandmarker.createFromOptions(files, { ...options, baseOptions: { modelAssetPath: '/mediapipe/face_landmarker.task', delegate } }); }
-  catch {
-    delegate = 'CPU';
-    tracker = await FaceLandmarker.createFromOptions(files, { ...options, baseOptions: { modelAssetPath: '/mediapipe/face_landmarker.task', delegate } });
-  }
-  return { delegate, detect: (video: HTMLVideoElement, now: number) => tracker.detectForVideo(video, now), close: () => tracker.close() };
-}
+export type TrackingWorkerMessage =
+  | { type: 'ready' | 'delegate'; delegate: 'GPU' | 'CPU' }
+  | { type: 'result'; result: FaceResult; elapsed: number }
+  | { type: 'consumed' | 'tick' | 'error' };
+
+// Classic worker: the pinned MediaPipe runtime loads its local WASM glue with importScripts.
+export function createTrackingWorker() { return new Worker('/mediapipe/tracking-worker.js'); }

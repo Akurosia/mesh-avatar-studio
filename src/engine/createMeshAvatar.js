@@ -141,7 +141,7 @@ export async function createMeshAvatarImpl(canvas, options) {
 
   let parameters = {}, parameterWeight = 1, lastParameters = {};
   const tmp = [0, 0];
-  function tick(dt) {
+  function updateParameters(dt) {
     const P = { ...motion.update(dt) };
     for (const [key, value] of Object.entries(parameters)) P[key] = parameterWeight === 1 ? value : (P[key] ?? 0) + (value - (P[key] ?? 0)) * parameterWeight;
     // Speech owns the mouth while active; explicit pose sliders still own all other parameters.
@@ -150,6 +150,10 @@ export async function createMeshAvatarImpl(canvas, options) {
       if (!options.preserveMouthForm || parameters.mouthForm === undefined) P.mouthForm = motion.P.mouthForm;
     }
     lastParameters = P;
+    return P;
+  }
+  function tick(dt) {
+    const P = updateParameters(dt);
     const phys = physics.step(P, dt);
 
     const bp = baseMesh.pos, br = baseMesh.rest;
@@ -239,6 +243,8 @@ export async function createMeshAvatarImpl(canvas, options) {
       if (sec === 0) tick(0);
       else for (let i = 0; i < Math.round(sec * fps); i++) tick(1 / fps);
     },
+    /** Update motion and lip sync without drawing a hidden preview. */
+    advanceParameters(sec) { if (!destroyed) updateParameters(sec); },
     destroy() {
       if (destroyed) return;
       destroyed = true;

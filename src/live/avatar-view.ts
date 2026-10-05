@@ -18,17 +18,20 @@ export async function createAvatarView(canvas: HTMLCanvasElement, settings: View
   if (!settings.idle) avatar.setParameters(neutralParameters);
   canvas.dataset.state = 'ready';
   const timing: FrameTiming = { frames: 0, totalMs: 0, maxMs: 0 };
-  let raf = 0, previous = performance.now();
-  const frame = (now: number) => {
+  let raf = 0, previous = performance.now(), lastPaint = previous;
+  const update = (now: number, draw = true) => {
     const dt = Math.min(0.05, Math.max(0.001, (now - previous) / 1000)); previous = now;
     beforeFrame?.(avatar, now, dt);
     const start = performance.now();
-    avatar.advance(dt, 1 / dt);
+    if (draw) avatar.advance(dt, 1 / dt); else avatar.advanceParameters(dt);
     const elapsed = performance.now() - start;
-    timing.frames++; timing.totalMs += elapsed; timing.maxMs = Math.max(timing.maxMs, elapsed);
+    if (draw) { timing.frames++; timing.totalMs += elapsed; timing.maxMs = Math.max(timing.maxMs, elapsed); }
     afterFrame?.(avatar, now);
-    raf = requestAnimationFrame(frame);
   };
+  const frame = (now: number) => { lastPaint = now; update(now); raf = requestAnimationFrame(frame); };
   raf = requestAnimationFrame(frame);
-  return { avatar, timing, destroy() { cancelAnimationFrame(raf); avatar.destroy(); } };
+  return { avatar, timing,
+    paintPaused(now: number) { return now - lastPaint > 1000; },
+    updateIfStalled(now: number) { if (now - previous >= 1000 / 30 - 2) update(now, false); },
+    destroy() { cancelAnimationFrame(raf); avatar.destroy(); } };
 }

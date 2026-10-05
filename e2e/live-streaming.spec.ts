@@ -31,7 +31,7 @@ async function syntheticMedia(page: Page) {
       }
       const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 480;
       const ctx = canvas.getContext('2d')!;
-      const draw = () => { ctx.fillStyle = '#999'; ctx.fillRect(0, 0, 640, 480); ctx.fillStyle = '#fff'; ctx.fillRect(Date.now() % 500, 100, 40, 40); };
+      const draw = () => { if ((window as Window & { freezeVideo?: boolean }).freezeVideo) return; ctx.fillStyle = '#999'; ctx.fillRect(0, 0, 640, 480); ctx.fillStyle = '#fff'; ctx.fillRect(Date.now() % 500, 100, 40, 40); };
       draw(); const timer = window.setInterval(draw, 33);
       const stream = canvas.captureStream(30), track = stream.getTracks()[0], stop = track.stop.bind(track);
       track.stop = () => { clearInterval(timer); stop(); };
@@ -39,13 +39,14 @@ async function syntheticMedia(page: Page) {
     } });
   });
 }
-async function stubTracker(page: Page) {
-  await page.route('**/src/live/face-tracker.ts', route => route.fulfill({ contentType: 'application/javascript', body: `
-    export async function createFaceTracker() { return { delegate: 'GPU', close() {}, detect() {
-      const a = (window.__liveYaw ?? 24) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+async function stubTracker(page: Page, moving = false) {
+  await page.context().route('**/mediapipe/vision_bundle.cjs', route => route.fulfill({ contentType: 'application/javascript', body: `
+    self.exports.FilesetResolver = { forVisionTasks: async () => ({}) };
+    self.exports.FaceLandmarker = { createFromOptions: async () => ({ close() {}, detectForVideo() {
+      const a = ${moving ? 'Math.sin(performance.now() / 300) * 24' : '24'} * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
       return { faceLandmarks: [[]], facialTransformationMatrixes: [{ data: [c,0,-s,0,0,1,0,0,s,0,c,0,0,0,0,1] }],
         faceBlendshapes: [{ categories: [{ categoryName: 'mouthPucker', score: .8 }, { categoryName: 'jawOpen', score: .1 }] }] };
-    } }; }` }));
+    } }) };` }));
 }
 async function ready(page: Page, url: string) {
   await page.goto(url); await expect(page.locator('canvas[data-state="ready"]')).toBeVisible();
@@ -137,7 +138,7 @@ test('camera denial is explained without starting capture', async ({ page }) => 
 test('real tracking runtime loads its model and WASM locally with synthetic video only', async ({ context, page }) => {
   test.setTimeout(60000);
   const outside = await guardNetwork(context), assets: string[] = [], errors: string[] = [];
-  page.on('request', request => { if (request.url().includes('/mediapipe/')) assets.push(request.url()); });
+  context.on('request', request => { if (request.url().includes('/mediapipe/')) assets.push(request.url()); });
   page.on('pageerror', error => errors.push(error.message));
   await syntheticMedia(page); await ready(page, '/live.html');
   await page.getByRole('button', { name: 'Start camera', exact: true }).click();
@@ -148,4 +149,56 @@ test('real tracking runtime loads its model and WASM locally with synthetic vide
   expect(assets.some(url => url.endsWith('/face_landmarker.task'))).toBe(true);
   expect(assets.some(url => url.endsWith('.wasm'))).toBe(true);
   expect(errors).toEqual([]); expect(outside).toEqual([]);
+});
+
+async function hideControls(page: Page) {
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    // Visibility alone does not pause RAF in a headless test. Also stop both painting callbacks.
+    window.requestAnimationFrame = () => 0;
+    HTMLVideoElement.prototype.requestVideoFrameCallback = () => 0;
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+}
+
+for (const source of ['processor', 'video-callback', 'worker-timer']) {
+  test(`hidden control page relays fresh poses at 15 fps or more using ${source}`, async ({ context, page }) => {
+    const outside = await guardNetwork(context);
+    if (source !== 'processor') await page.addInitScript(source => {
+      Object.defineProperty(window, 'MediaStreamTrackProcessor', { value: undefined });
+      if (source === 'worker-timer') Object.defineProperty(HTMLVideoElement.prototype, 'requestVideoFrameCallback', { value: undefined, writable: true });
+    }, source);
+    await syntheticMedia(page); await stubTracker(page, true); await ready(page, '/live.html');
+    const stream = await context.newPage(); await ready(stream, '/stream.html');
+    await page.getByRole('button', { name: 'Start camera', exact: true }).click();
+    await expect(page.getByTestId('tracking-status')).toHaveAttribute('data-state', 'tracking');
+    await hideControls(page); await stream.bringToFront();
+    const metrics = await stream.evaluate(async () => {
+      const path = '/src/live/relay.ts', { receiveLiveParameters } = await import(path);
+      const samples: { time: number; angle: number }[] = [], start = performance.now();
+      const off = receiveLiveParameters((data: { params: Record<string, number> }) => { samples.push({ time: performance.now(), angle: data.params.angleX }); });
+      await new Promise(resolve => setTimeout(resolve, 4000)); off();
+      return { fps: samples.length / ((performance.now() - start) / 1000), range: Math.max(...samples.map(p => p.angle)) - Math.min(...samples.map(p => p.angle)), maxGap: Math.max(...samples.slice(1).map((p, i) => p.time - samples[i].time)) };
+    });
+    expect(metrics.fps).toBeGreaterThanOrEqual(15); expect(metrics.range).toBeGreaterThan(15); expect(metrics.maxGap).toBeLessThan(1000);
+    await expect(stream.locator('#avatar')).toHaveAttribute('data-live', 'active');
+    await expect(page.getByTestId('background-status')).toHaveCount(0);
+    expect(outside).toEqual([]);
+    console.log(`Hidden ${source}: ${JSON.stringify(metrics)}`);
+  });
+}
+
+test('hidden tracking stall warns in all languages and clears when fresh frames resume', async ({ page }) => {
+  await syntheticMedia(page); await stubTracker(page); await ready(page, '/live.html');
+  await page.getByRole('button', { name: 'Start camera', exact: true }).click();
+  await expect(page.getByTestId('tracking-status')).toHaveAttribute('data-state', 'tracking');
+  await hideControls(page);
+  await page.evaluate(() => { (window as Window & { freezeVideo?: boolean }).freezeVideo = true; });
+  await expect(page.getByTestId('background-status')).toContainText('Tracking has stopped', { timeout: 5000 });
+  await page.getByRole('button', { name: '日本語', exact: true }).click();
+  await expect(page.getByTestId('background-status')).toContainText('この画面が隠れているため追跡が止まっています');
+  await page.getByRole('button', { name: '简体中文', exact: true }).click();
+  await expect(page.getByTestId('background-status')).toContainText('面部追踪已停止');
+  await page.evaluate(() => { (window as Window & { freezeVideo?: boolean }).freezeVideo = false; });
+  await expect(page.getByTestId('background-status')).toHaveCount(0, { timeout: 5000 });
 });

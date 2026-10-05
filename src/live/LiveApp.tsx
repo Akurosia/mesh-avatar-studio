@@ -3,7 +3,7 @@ import { useI18n } from '../editor/i18n';
 import { createAvatarView } from './avatar-view';
 import { viewSettings, streamUrl, backgroundColor } from './settings';
 import { FacePose, type TrackingOptions } from './tracking';
-import { CameraCapture, MicrophoneCapture, type CameraState, type MicState } from './media';
+import { CameraCapture, MicrophoneCapture, type CameraState, type MicState, type BackgroundTracking } from './media';
 import { liveText } from './i18n';
 import { createLiveSender } from './relay';
 
@@ -18,6 +18,7 @@ export function LiveApp() {
   const [gain, setGain] = useState(1), [calibrated, setCalibrated] = useState(false);
   const [copyState, setCopyState] = useState<'copied' | 'copyError' | null>(null);
   const [viewState, setViewState] = useState<'loading' | 'ready' | 'projectError'>('loading');
+  const [backgroundStatus, setBackgroundStatus] = useState<BackgroundTracking>(null);
   const canvas = useRef<HTMLCanvasElement>(null), video = useRef<HTMLVideoElement>(null);
   const camera = useRef<CameraCapture | null>(null), microphone = useRef<MicrophoneCapture | null>(null);
   const pose = useRef(new FacePose());
@@ -34,6 +35,12 @@ export function LiveApp() {
   }, []);
   useEffect(() => {
     let cancelled = false, view: Awaited<ReturnType<typeof createAvatarView>> | undefined;
+    const clock = new Worker(new URL('./clock-worker.ts', import.meta.url), { type: 'module' });
+    clock.onmessage = () => {
+      const now = performance.now();
+      view?.updateIfStalled(now);
+      setBackgroundStatus(camera.current?.backgroundStatus(document.visibilityState === 'hidden' || !!view?.paintPaused(now), now) ?? null);
+    };
     const send = createLiveSender(settings.project);
     setViewState('loading');
     void createAvatarView(canvas.current!, settings, (avatar, now, dt) => {
@@ -46,7 +53,7 @@ export function LiveApp() {
     }, (avatar, now) => {
       if (controls.current.cameraState === 'running' || controls.current.micState === 'micOn') send(avatar.getParameters(), now);
     }).then(value => { if (cancelled) value.destroy(); else { view = value; setViewState('ready'); } }).catch(() => { if (!cancelled) setViewState('projectError'); });
-    return () => { cancelled = true; view?.destroy(); };
+    return () => { cancelled = true; clock.terminate(); view?.destroy(); };
   }, [settings.project, settings.fit]);
   const cameraActive = cameraState === 'starting' || cameraState === 'running';
   const micActive = micState === 'micStarting' || micState === 'micOn';
@@ -66,6 +73,7 @@ export function LiveApp() {
           if (cameraActive) camera.current?.stop(); else void camera.current?.start(cameraId).then(refreshDevices);
         }}>{cameraActive ? t.stop : t.start}</button><button disabled={!tracking} onClick={() => setCalibrated(pose.current.calibrate(performance.now()))}>{t.calibrate}</button></div>
         <p role="status" data-testid="tracking-status" data-state={status}>{t[status]}</p>
+        {backgroundStatus && <p role="alert" className="live-error" data-testid="background-status">{t[backgroundStatus]}</p>}
         <small>{calibrated ? t.calibrated : t.calibrateHint}</small>
         <label className="live-check"><input type="checkbox" checked={options.mirror} onChange={event => setOptions(current => ({ ...current, mirror: event.target.checked }))} />{t.mirror}</label>
         <label>{t.sensitivity}<input type="range" min="0.25" max="2" step="0.05" value={options.sensitivity} onChange={event => setOptions(current => ({ ...current, sensitivity: Number(event.target.value) }))} /></label>

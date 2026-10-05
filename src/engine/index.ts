@@ -30,6 +30,7 @@ export interface MeshAvatar {
   setSwayGain(gain: number): void;
   onMotion(listener: (id: string | null) => void): () => void;
   advance(seconds: number, fps?: number): void;
+  advanceParameters(seconds: number): void;
   destroy(): void;
 }
 

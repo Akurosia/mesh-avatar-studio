@@ -107,6 +107,10 @@ directly in OBS. For other capture software, choose green and apply a chroma key
 Both pages use the local development server (`npm run dev`). The stream view shows idle
 motion when the Live page stops sending updates.
 
+Keep the Live page open in its own window. Open the OBS URL inside OBS or in another
+tab; do not paste it into the tab running Live. If the page reports that tracking has
+stopped or slowed while hidden, bring its window to the front.
+
 ## More
 
 - [Agent guide](docs/agent-guide.md): the step-by-step procedure agents follow
