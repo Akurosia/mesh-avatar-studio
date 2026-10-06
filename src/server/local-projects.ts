@@ -119,7 +119,9 @@ export function localProjectMiddleware(root: string, reveal = revealFolder, runn
           }
         }
         try {
-          await cp(sample, path, { recursive: true, force: false, errorOnExist: true, filter: async source => {
+          // The name is reserved with an exclusive mkdir above, so the target is a fresh empty
+          // folder; copy into it without errorOnExist, which Node 24+ throws for that very folder.
+          await cp(sample, path, { recursive: true, force: false, filter: async source => {
             if ((await lstat(source)).isSymbolicLink()) throw new HttpError(400, 'Sample contains redirected files.');
             return true;
           } });
