@@ -9,10 +9,13 @@ export interface MeshAvatarOptions {
   manual?: boolean;
   padTop?: number;
   padSide?: number;
+  fit?: 'contain' | 'cover';
+  preserveMouthForm?: boolean;
 }
 export interface MeshAvatar {
   readonly motions: { id: string; label: string; idle: boolean }[];
-  setParameters(parameters: Record<string, number>): void;
+  setParameters(parameters: Record<string, number>, weight?: number): void;
+  getParameters(): Record<string, number>;
   setVoiceLevel(value: number): void;
   setSpeaking(on: boolean): void;
   setEmotion(tag: string | null, options?: { playMotion?: boolean }): void;
@@ -27,6 +30,7 @@ export interface MeshAvatar {
   setSwayGain(gain: number): void;
   onMotion(listener: (id: string | null) => void): () => void;
   advance(seconds: number, fps?: number): void;
+  advanceParameters(seconds: number): void;
   destroy(): void;
 }
 
