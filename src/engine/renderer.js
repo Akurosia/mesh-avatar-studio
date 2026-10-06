@@ -1,6 +1,6 @@
 import { layerNormals } from '../lighting/normals';
 import { DEFAULT_LIGHTING, parseLighting } from '../lighting/settings';
-import { WRAP, DARKEN, BRIGHTEN, headRotation } from '../lighting/shading';
+import { TERMINATOR, DETAIL_SCALE, SHADOW_SATURATION, MAX_IRRADIANCE, headRotation } from '../lighting/shading';
 import { DropShadow } from '../lighting/shadow';
 
 /** @param {ReturnType<import('./rig.js').createRig>} engine
@@ -132,22 +132,43 @@ export function createRenderer(engine, rig) {
     .replace('vUv = aUv;', 'vHeadWeight = aHeadWeight; vScreen = vec2((aPos.x * uScale.x + uOffset.x + 1.0) * 0.5, (1.0 - aPos.y * uScale.y - uOffset.y) * 0.5); vUv = aUv;');
   const LIGHT_FS = FS.replace('uniform sampler2D uTex;', `uniform sampler2D uTex;
     uniform sampler2D uNormal; in float vHeadWeight; in vec2 vScreen;
-    uniform mat3 uHeadRotation; uniform vec3 uLight; uniform vec3 uLightColor;
-    uniform vec4 uLighting; uniform float uAspect; uniform int uCel;`)
+    uniform mat3 uHeadRotation; uniform vec3 uLight; uniform vec3 uLightColor; uniform vec3 uAmbientColor;
+    uniform vec4 uLighting; uniform vec4 uSurface; uniform float uAspect; uniform int uCel;`)
     .replace('outColor = c * uAlpha;', `
-      vec3 n = normalize(texture(uNormal, vUv).rgb * 2.0 - 1.0);
+      // RG hold the smooth surface normal, BA the painting's relief (see lighting/normals.ts).
+      vec4 encoded = texture(uNormal, vUv);
+      vec2 base = encoded.rg * 2.0 - 1.0;
+      vec3 n = vec3(base, sqrt(max(0.0, 1.0 - dot(base, base))));
+      n = normalize(n + vec3((encoded.ba * 2.0 - 1.0) * uSurface.w * ${DETAIL_SCALE.toFixed(3)}, 0.0));
       n = normalize(mix(n, uHeadRotation * n, vHeadWeight));
-      vec3 light = normalize(vec3((uLight.xy - vScreen) * vec2(uAspect, 1.0), uLight.z));
-      float diffuse = clamp((dot(n, light) + ${WRAP}) / (1.0 + ${WRAP}), 0.0, 1.0);
+      vec2 toLight = (uLight.xy - vScreen) * vec2(uAspect, 1.0);
+      vec3 light = normalize(vec3(toLight, uLight.z));
+      float ndl = dot(n, light);
+      float diffuse;
       if (uCel == 1) {
-        float edge = max(fwidth(diffuse), 0.001);
-        diffuse = 0.18 + 0.37 * smoothstep(0.4 - edge, 0.4 + edge, diffuse) + 0.45 * smoothstep(0.75 - edge, 0.75 + edge, diffuse);
+        float w = 0.01 + uSurface.x * 0.08;
+        diffuse = 0.2 + 0.45 * smoothstep(${TERMINATOR.toFixed(3)} - w, ${TERMINATOR.toFixed(3)} + w, ndl) + 0.35 * smoothstep(0.55 - w, 0.55 + w, ndl);
+      } else {
+        float s = 0.05 + uSurface.x * 0.5;
+        diffuse = smoothstep(${TERMINATOR.toFixed(3)} - s, ${TERMINATOR.toFixed(3)} + s, ndl) * (0.35 + 0.65 * max(0.0, ndl));
       }
-      float amount = clamp(uLighting.z + uLighting.y * diffuse - 1.0, -1.0, 1.0) * uLighting.x;
-      c.rgb *= 1.0 + min(0.0, amount) * ${DARKEN};
-      c.rgb += (vec3(c.a) - c.rgb) * uLightColor * max(0.0, amount) * ${BRIGHTEN};
-      // Tint only the illuminated side; preserve premultiplication and painted contrast.
-      c.rgb *= mix(vec3(1.0), uLightColor, diffuse * uLighting.x * 0.25);
+      float reach = dot(toLight, toLight) / (uLighting.w * uLighting.w);
+      float attenuation = 1.0 / (1.0 + reach);
+      vec3 radiance = uLightColor * uLighting.y * attenuation;
+      // A light close to the surface may brighten a little, but must not bleach painted colours.
+      vec3 irradiance = min(uAmbientColor * uLighting.z + radiance * diffuse, vec3(${MAX_IRRADIANCE.toFixed(3)}));
+      // Painted shadows are deeper versions of the base colour, not grey: multiply by the colour
+      // itself as the surface turns away from the light.
+      vec3 albedo = c.rgb / max(c.a, 1e-4);
+      float dark = 1.0 - clamp(dot(irradiance, vec3(0.3333)), 0.0, 1.0);
+      vec3 shaded = c.rgb * mix(vec3(1.0), albedo, dark * ${SHADOW_SATURATION.toFixed(3)}) * irradiance;
+      float specular = pow(max(dot(n, normalize(light + vec3(0.0, 0.0, 1.0))), 0.0), 60.0) * uSurface.y;
+      if (uCel == 1) specular = smoothstep(0.3, 0.35, specular) * uSurface.y;
+      vec2 side = length(n.xy) > 0.001 ? normalize(n.xy) : vec2(0.0);
+      float rim = pow(1.0 - max(n.z, 0.0), 4.0) * smoothstep(-0.2, 0.7, dot(side, normalize(toLight + vec2(1e-4)))) * uSurface.z;
+      shaded += radiance * (specular * max(0.0, ndl) + rim) * c.a;
+      // Strength blends between the original painting and the relit result; alpha is unchanged.
+      c.rgb = clamp(mix(c.rgb, shaded, uLighting.x), vec3(0.0), vec3(c.a));
       outColor = c * uAlpha;`);
 
   const LINE_VS = `#version 300 es
@@ -356,7 +377,9 @@ export function createRenderer(engine, rig) {
         gl.uniform1i(m.u.uNormal, 1);
         gl.uniform3f(m.u.uLight, light.x, light.y, light.z);
         gl.uniform3f(m.u.uLightColor, ((light.color >> 16) & 255) / 255, ((light.color >> 8) & 255) / 255, (light.color & 255) / 255);
-        gl.uniform4f(m.u.uLighting, light.strength, light.intensity, light.ambient, 0);
+        gl.uniform3f(m.u.uAmbientColor, ((light.ambientColor >> 16) & 255) / 255, ((light.ambientColor >> 8) & 255) / 255, (light.ambientColor & 255) / 255);
+        gl.uniform4f(m.u.uLighting, light.strength, light.intensity, light.ambient, light.reach);
+        gl.uniform4f(m.u.uSurface, light.softness, light.specular, light.rim, light.detail);
         gl.uniform1f(m.u.uAspect, this.canvas.width / this.canvas.height);
         gl.uniform1i(m.u.uCel, light.mode === 'cel' ? 1 : 0);
         gl.uniformMatrix3fv(m.u.uHeadRotation, false, headRotation(state.angleX ?? 0, state.angleY ?? 0, state.angleZ ?? 0, rig.head.maxRoll));

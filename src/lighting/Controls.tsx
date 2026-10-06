@@ -3,20 +3,29 @@ import { colorHex, DEFAULT_LIGHTING, type LightingSettings } from './settings';
 import './lighting.css';
 
 export const lightingText = {
-  en: { title: 'Lighting', enabled: 'Enable lighting', height: 'Light height', strength: 'Strength', intensity: 'Intensity', ambient: 'Ambient light', color: 'Light color', mode: 'Shading', soft: 'Soft', cel: 'Cel', shadow: 'Drop shadow', reset: 'Reset lighting', handle: 'Light position', hint: 'Drag the light over the preview. Arrow keys move it too.' },
-  ja: { title: '光源と陰影', enabled: '照明を有効にする', height: '光源の高さ', strength: '陰影の強さ', intensity: '光の強さ', ambient: '環境光', color: '光の色', mode: '陰影の種類', soft: 'やわらかい陰影', cel: 'セル調', shadow: '背後の影', reset: '照明をリセット', handle: '光源の位置', hint: 'プレビュー上の光源をドラッグします。矢印キーでも移動できます。' },
-  zh: { title: '光源与阴影', enabled: '启用光照', height: '光源高度', strength: '明暗强度', intensity: '光照强度', ambient: '环境光', color: '光源颜色', mode: '着色方式', soft: '柔和', cel: '赛璐璐', shadow: '投影', reset: '重置光照', handle: '光源位置', hint: '在预览上拖动光源，也可使用方向键移动。' },
+  en: { title: 'Lighting', enabled: 'Enable lighting', height: 'Light height', strength: 'Strength', intensity: 'Intensity', ambient: 'Ambient light', color: 'Light color', mode: 'Shading', soft: 'Soft', cel: 'Cel', shadow: 'Drop shadow', reset: 'Reset lighting', handle: 'Light position', hint: 'Drag the light over the preview. Arrow keys move it too.', reach: 'Light spread', ambientColor: 'Ambient color', softness: 'Shading smoothness', specular: 'Gloss', rim: 'Rim light', detail: 'Stroke relief', light: 'Light', surface: 'Shading' },
+  ja: { title: '光源と陰影', enabled: '照明を有効にする', height: '光源の高さ', strength: '陰影の強さ', intensity: '光の強さ', ambient: '環境光', color: '光の色', mode: '陰影の種類', soft: 'やわらかい陰影', cel: 'セル調', shadow: '背後の影', reset: '照明をリセット', handle: '光源の位置', hint: 'プレビュー上の光源をドラッグします。矢印キーでも移動できます。', reach: '光の広がり', ambientColor: '環境光の色', softness: '陰影のなめらかさ', specular: 'つや', rim: 'リムライト', detail: '描線の凹凸', light: '光源', surface: '陰影' },
+  zh: { title: '光源与阴影', enabled: '启用光照', height: '光源高度', strength: '明暗强度', intensity: '光照强度', ambient: '环境光', color: '光源颜色', mode: '着色方式', soft: '柔和', cel: '赛璐璐', shadow: '投影', reset: '重置光照', handle: '光源位置', hint: '在预览上拖动光源，也可使用方向键移动。', reach: '光照范围', ambientColor: '环境光颜色', softness: '明暗过渡', specular: '光泽', rim: '轮廓光', detail: '线条凹凸', light: '光源', surface: '明暗' },
 };
 type Props = { value: LightingSettings; onChange: (value: LightingSettings) => void; language: keyof typeof lightingText };
 export function LightingControls({ value, onChange, language }: Props) {
   const t = lightingText[language];
+  type Key = 'z' | 'reach' | 'intensity' | 'ambient' | 'strength' | 'softness' | 'specular' | 'rim' | 'detail';
+  const sliders = (items: { key: Key; label: keyof typeof t; min: number; max: number }[]) => items.map(({ key, label, min, max }) =>
+    <label className="lighting-slider" key={key}>{t[label]}<input aria-label={t[label]} type="range" min={min} max={max} step="0.01" value={value[key]} onChange={e => onChange({ ...value, [key]: Number(e.target.value) })} /><output>{value[key].toFixed(2)}</output></label>);
   return <div className="lighting-controls">
     <label className="lighting-check"><input type="checkbox" checked={value.enabled} onChange={e => onChange({ ...value, enabled: e.target.checked })} />{t.enabled}</label>
     <fieldset disabled={!value.enabled}>
-      {([{ key: 'z', label: 'height', min: 0.1, max: 2 }, { key: 'strength', label: 'strength', min: 0, max: 1 },
-        { key: 'intensity', label: 'intensity', min: 0, max: 2 }, { key: 'ambient', label: 'ambient', min: 0, max: 1 }] as const).map(({ key, label, min, max }) =>
-        <label className="lighting-slider" key={key}>{t[label]}<input aria-label={t[label]} type="range" min={min} max={max} step="0.01" value={value[key]} onChange={e => onChange({ ...value, [key]: Number(e.target.value) })} /><output>{value[key].toFixed(2)}</output></label>)}
+      <legend>{t.light}</legend>
+      {sliders([{ key: 'z', label: 'height', min: 0.1, max: 2 }, { key: 'reach', label: 'reach', min: 0.2, max: 3 },
+        { key: 'intensity', label: 'intensity', min: 0, max: 2 }, { key: 'ambient', label: 'ambient', min: 0, max: 1 }])}
       <label className="lighting-color">{t.color}<input aria-label={t.color} type="color" value={colorHex(value.color)} onChange={e => onChange({ ...value, color: parseInt(e.target.value.slice(1), 16) })} /></label>
+      <label className="lighting-color">{t.ambientColor}<input aria-label={t.ambientColor} type="color" value={colorHex(value.ambientColor)} onChange={e => onChange({ ...value, ambientColor: parseInt(e.target.value.slice(1), 16) })} /></label>
+    </fieldset>
+    <fieldset disabled={!value.enabled}>
+      <legend>{t.surface}</legend>
+      {sliders([{ key: 'strength', label: 'strength', min: 0, max: 1 }, { key: 'softness', label: 'softness', min: 0, max: 1 },
+        { key: 'specular', label: 'specular', min: 0, max: 1 }, { key: 'rim', label: 'rim', min: 0, max: 1 }, { key: 'detail', label: 'detail', min: 0, max: 1 }])}
       <label>{t.mode}<select aria-label={t.mode} value={value.mode} onChange={e => onChange({ ...value, mode: e.target.value as 'soft' | 'cel' })}><option value="soft">{t.soft}</option><option value="cel">{t.cel}</option></select></label>
       <label className="lighting-check"><input type="checkbox" checked={value.shadow} onChange={e => onChange({ ...value, shadow: e.target.checked })} />{t.shadow}</label>
     </fieldset>

@@ -24,3 +24,4 @@
 .lighting-section > summary::-webkit-details-marker, .live-lighting > summary::-webkit-details-marker { display: none; }
 .lighting-section > summary { list-style: none; } .live-lighting > summary { list-style: none; }
 .lighting-on { margin-left: auto; padding: 1px 7px; border-radius: 999px; background: #fff4cc; color: #805000; font-size: 11px; font-weight: 600; }
+.lighting-controls legend { padding: 0; margin-bottom: 2px; font-weight: 600; color: #4a5a70; }
