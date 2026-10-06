@@ -360,7 +360,7 @@ function Workspace() {
         <span className="toolbar-divider" />
         <a className="live-link" href={localProject || listedProject || !pickedName ? `/live.html?project=${encodeURIComponent(localProject?.name ?? listedProject?.name ?? 'sample-miko-qipao')}` : undefined}
           target="_blank" rel="noreferrer" aria-disabled={!!pickedName && !localProject && !listedProject}
-          title={pickedName && !localProject && !listedProject ? liveText[language].liveUnavailable : liveText[language].title}>{liveText[language].title}</a>
+          title={pickedName && !localProject && !listedProject ? liveText[language].liveUnavailable : liveText[language].title}><Icon name="live" />{liveText[language].title}</a>
         <button className="icon-button" aria-label={t.help} title={t.help} aria-expanded={help} onClick={() => setHelp(current => !current)}><Icon name="help" /></button>
         <div className="language-toggle" role="group" aria-label={t.language}>
           <button aria-label={t.english} aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>{t.enCode}</button>
