@@ -35,7 +35,8 @@ export function Preview({ projectKey, rig, assets, hasMouthSprites, onDrawMouth 
   const [speed, setSpeed] = useState(7);
   const [loop, setLoop] = useState(false);
   const [liveMouth, setLiveMouth] = useState(0);
-  const [tab, setTab] = useState<'pose' | 'lip' | 'lighting'>('pose');
+  const [tab, setTab] = useState<'pose' | 'lip'>('pose');
+  const [lightingOpen, setLightingOpen] = useState(false);
   const skipped = skippedKanaCharacters(text).join(' ');
   const controls = useRef({ idle, stress, parameters });
   controls.current = { idle, stress, parameters };
@@ -111,18 +112,16 @@ export function Preview({ projectKey, rig, assets, hasMouthSprites, onDrawMouth 
       <div className="panel-title"><h2>{t.preview}</h2><span role="status" data-testid="preview-status" data-state={status}>{t[status]}</span></div>
       <div className="lighting-preview"><canvas ref={canvas} data-testid="preview" data-revision={revision} className="preview-canvas"
         style={{ aspectRatio: `${rig.image.width * (1 + 2 * rig.view.padSide)} / ${rig.image.height * (1 + rig.view.padTop)}` }} />
-      {tab === 'lighting' && <LightHandle value={lighting} onChange={setLighting} language={language} />}
+      {lightingOpen && <LightHandle value={lighting} onChange={setLighting} language={language} />}
       </div>
       <div className="preview-tools">
         <button className="icon-button" aria-label={idle ? t.pause : t.play} title={idle ? t.pause : t.play}
           data-testid="idle-toggle" aria-pressed={idle} onClick={() => setIdle(current => !current)}><Icon name={idle ? 'pause' : 'play'} /></button><span>{t.idle}</span>
       </div>
       <div className="preview-tabs" role="tablist" aria-label={t.preview}>
-        <button id="pose-tab" role="tab" aria-selected={tab === 'pose'} aria-controls="pose-panel" onClick={() => setTab('pose')}>{t.pose}</button>
-        <button id="lip-tab" role="tab" aria-selected={tab === 'lip'} aria-controls="lip-panel" onClick={() => setTab('lip')}>{t.lipSync}</button>
-        <button id="lighting-tab" role="tab" aria-selected={tab === 'lighting'} aria-controls="lighting-panel" onClick={() => setTab('lighting')}>{lightingText[language].title}</button>
+        <button id="pose-tab" role="tab" aria-selected={tab === 'pose'} aria-controls="pose-panel" onClick={() => setTab('pose')}><Icon name="pose" />{t.pose}</button>
+        <button id="lip-tab" role="tab" aria-selected={tab === 'lip'} aria-controls="lip-panel" onClick={() => setTab('lip')}><Icon name="mouth" />{t.lipSync}</button>
       </div>
-      <div id="lighting-panel" role="tabpanel" aria-labelledby="lighting-tab" hidden={tab !== 'lighting'}><LightingControls value={lighting} onChange={setLighting} language={language} /></div>
       <div className="pose-test" id="pose-panel" role="tabpanel" aria-labelledby="pose-tab" hidden={tab !== 'pose'}>
       <div className="sliders">
         {sliders.map(slider => (
@@ -162,6 +161,10 @@ export function Preview({ projectKey, rig, assets, hasMouthSprites, onDrawMouth 
         <div className="sliders lip-live"><label>{t.mouthOpen}<input type="range" aria-label={t.mouthOpen} min="0" max="1" step="0.01" disabled={lip !== null}
           value={lip ? liveMouth : parameters.mouthOpen ?? 0} onChange={event => setParameters(current => ({ ...current, mouthOpen: Number(event.target.value) }))} /><output>{(lip ? liveMouth : parameters.mouthOpen ?? 0).toFixed(2)}</output></label></div>
       </div>
+      <details className="lighting-section" data-testid="lighting-section" onToggle={event => setLightingOpen(event.currentTarget.open)}>
+        <summary><Icon name="light" />{lightingText[language].title}{lighting.enabled && <span className="lighting-on">ON</span>}</summary>
+        <LightingControls value={lighting} onChange={setLighting} language={language} />
+      </details>
     </section>
   );
 }

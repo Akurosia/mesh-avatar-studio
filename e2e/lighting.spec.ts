@@ -95,19 +95,25 @@ test('lighting is lazy, changes brightness with position, preserves alpha, shado
   expect(errors).toEqual([]); expect(outside).toEqual([]);
 });
 
-test('editor remembers lighting, hides the handle outside its tab, and resets in all languages', async ({ context, page }) => {
+test('editor remembers lighting, keeps the section closed by default, hides the handle while closed, and resets in all languages', async ({ context, page }) => {
   const outside = await guard(context);
   await page.goto('/'); await expect(page.getByTestId('preview-status')).toHaveAttribute('data-state', 'ready'); await dismissGuide(page);
   await expect(page.getByTestId('preview-status')).toHaveAttribute('data-state', 'ready');
   await expect(page.getByRole('button', { name: 'Light position', exact: true })).toHaveCount(0);
-  await page.getByRole('tab', { name: 'Lighting', exact: true }).click();
+  const section = page.getByTestId('lighting-section');
+  await expect(section).not.toHaveAttribute('open', '');
+  await expect(page.getByRole('tab', { name: 'Lighting' })).toHaveCount(0);
+  await section.locator('summary').click();
   await page.getByRole('checkbox', { name: 'Enable lighting' }).check();
   const handle = page.getByRole('button', { name: 'Light position', exact: true });
   await handle.focus(); await handle.press('ArrowRight');
   await expect(handle).toHaveCSS('left', /px$/);
   await page.getByLabel('Shading', { exact: true }).selectOption('cel');
+  await expect(section.locator('.lighting-on')).toBeVisible();
+  await section.locator('summary').click(); await expect(handle).toHaveCount(0);
   await page.reload(); await expect(page.getByTestId('preview-status')).toHaveAttribute('data-state', 'ready');
-  await page.getByRole('tab', { name: 'Lighting', exact: true }).click();
+  await expect(section).not.toHaveAttribute('open', '');
+  await section.locator('summary').click();
   await expect(page.getByRole('checkbox', { name: 'Enable lighting' })).toBeChecked();
   await expect(page.getByLabel('Shading', { exact: true })).toHaveValue('cel');
   await page.getByRole('button', { name: '日本語', exact: true }).click();
@@ -129,6 +135,8 @@ test('live drag updates matching streams without a camera, and OBS URLs carry ev
     receiveLighting('unrelated-project', () => Object.assign(window, { wrongProject: true }));
   });
   const before = hash(await image(stream, 'canvas'));
+  await expect(page.getByRole('button', { name: 'Light position', exact: true })).toHaveCount(0);
+  await page.getByTestId('lighting-section').locator('summary').click();
   await page.getByRole('checkbox', { name: 'Enable lighting' }).check();
   const handle = page.getByRole('button', { name: 'Light position', exact: true }), bounds = await page.locator('canvas').boundingBox();
   await handle.hover(); await page.mouse.down();
