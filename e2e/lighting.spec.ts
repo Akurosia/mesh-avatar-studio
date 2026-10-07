@@ -117,7 +117,7 @@ test('editor remembers lighting, keeps the section closed by default, hides the 
   await expect(page.getByRole('checkbox', { name: 'Enable lighting' })).toBeChecked();
   await expect(page.getByLabel('Shading', { exact: true })).toHaveValue('cel');
   await page.getByRole('button', { name: '日本語', exact: true }).click();
-  await expect(page.getByRole('checkbox', { name: '照明を有効にする' })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'ライティングを有効にする' })).toBeVisible();
   await page.getByRole('button', { name: '简体中文', exact: true }).click();
   await page.getByRole('button', { name: '重置光照', exact: true }).click();
   await expect(page.getByRole('checkbox', { name: '启用光照' })).not.toBeChecked();
