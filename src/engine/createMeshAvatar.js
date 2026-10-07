@@ -186,6 +186,7 @@ export async function createMeshAvatarImpl(canvas, options) {
 
     const ball = 7; // px of iris travel
     R.draw({
+      angleX: P.angleX, angleY: P.angleY, angleZ: P.angleZ,
       eyes: [
         eyeOpenFor(P.eyeROpen), P.eyeSmile, P.gazeX * ball, -P.gazeY * ball * 0.6,
         eyeOpenFor(P.eyeLOpen), P.eyeSmileL ?? P.eyeSmile, P.gazeX * ball * 0.85, -P.gazeY * ball * 0.6,
@@ -232,6 +233,8 @@ export async function createMeshAvatarImpl(canvas, options) {
     stopLipSync() { motion.stopLipSync(); },
     getLipSyncState() { return motion.getLipSyncState(); },
     setAutoIdle(on) { motion.autoIdle = !!on; },
+    setLighting(value) { R.setLighting(value); },
+    getLightingStats() { return { ...R.lightingStats }; },
     setAutoMotion(on) { motion.autoMotion = !!on; },
     /** Hair / tassel sway multiplier (1 = default). */
     setSwayGain(g) { physics.gain = g; },
