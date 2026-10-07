@@ -19,6 +19,8 @@
 .lighting-section, .live-lighting { border-top: 1px solid #d5dfeb; }
 .live-lighting { border: 1px solid #d5dfeb; border-radius: 12px; background: white; }
 .lighting-section > summary, .live-lighting > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px 16px; font-weight: 600; }
+/* The editor row stays slim so the preview panel still fits a 900 px tall window. */
+.lighting-section > summary { padding: 7px 16px; }
 .lighting-section > summary::before, .live-lighting > summary::before { content: '▸'; }
 .lighting-section[open] > summary::before, .live-lighting[open] > summary::before { content: '▾'; }
 .lighting-section > summary::-webkit-details-marker, .live-lighting > summary::-webkit-details-marker { display: none; }
