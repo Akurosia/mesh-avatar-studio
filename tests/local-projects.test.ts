@@ -7,7 +7,7 @@ import { EventEmitter } from 'node:events';
 import { createServer, resolveConfig, type ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import fixture from '../samples/miko-qipao/rig.json';
-import { localProjectMiddleware, localProjectsPlugin } from '../src/server/local-projects';
+import { localProjectMiddleware, localProjectsPlugin, studioAllowedHosts } from '../src/server/local-projects';
 
 const failure = vi.hoisted(() => ({ operation: '', path: '', code: '' }));
 vi.mock('node:fs/promises', async importOriginal => {
@@ -35,7 +35,7 @@ beforeEach(async () => {
 });
 afterEach(async () => { failure.operation = ''; vi.useRealTimers(); await rm(root, { recursive: true, force: true }); });
 
-async function call(path: string, method = 'GET', body?: unknown, headers: Record<string, string> = {}, reveal = vi.fn(async (_path: string) => { void _path; })) {
+async function call(path: string, method = 'GET', body?: unknown, headers: Record<string, string> = {}, reveal = vi.fn(async (_path: string) => { void _path; }), allowedHosts: string[] = []) {
   const request = Readable.from(body === undefined ? [] : [Buffer.from(JSON.stringify(body))]) as IncomingMessage;
   request.url = path; request.method = method;
   request.headers = { host: '127.0.0.1:5173', 'content-type': 'application/json', ...headers };
@@ -44,7 +44,7 @@ async function call(path: string, method = 'GET', body?: unknown, headers: Recor
     writeHead(status: number, values: Record<string, string>) { result.status = status; result.headers = values; },
     end(value: string | Buffer) { result.body = String(value); },
   } as unknown as ServerResponse;
-  await localProjectMiddleware(root, reveal)(request, response, () => { result.status = 404; });
+  await localProjectMiddleware(root, reveal, undefined, allowedHosts)(request, response, () => { result.status = 404; });
   return result;
 }
 
@@ -68,6 +68,14 @@ test('accepts Docker and IPv6 local addresses while rejecting non-local hosts', 
   expect((await call('/__studio/projects', 'GET', undefined, { host: '0.0.0.0:5173', origin: 'http://0.0.0.0:5173' })).status).toBe(200);
   expect((await call('/__studio/projects', 'GET', undefined, { host: '[::1]:5173', origin: 'http://[::1]:5173' })).status).toBe(200);
   expect((await call('/__studio/projects', 'GET', undefined, { host: 'example.invalid' })).status).toBe(403);
+});
+
+test('accepts configured HTTPS reverse-proxy hosts and keeps same-origin protection', async () => {
+  const allowed = studioAllowedHosts('mesh.example.com, avatar.example.com,mesh.example.com');
+  expect(allowed).toEqual(['mesh.example.com', 'avatar.example.com']);
+  expect((await call('/__studio/projects', 'GET', undefined, { host: 'mesh.example.com', origin: 'https://mesh.example.com' }, undefined, allowed)).status).toBe(200);
+  expect((await call('/__studio/projects', 'GET', undefined, { host: 'mesh.example.com', origin: 'https://attacker.example' }, undefined, allowed)).status).toBe(403);
+  expect((await call('/__studio/projects', 'GET', undefined, { host: 'unlisted.example.com', origin: 'https://unlisted.example.com' }, undefined, allowed)).status).toBe(403);
 });
 
 test('rejects raw and encoded traversal, absolute paths, malformed encoding and symlink escapes', async () => {

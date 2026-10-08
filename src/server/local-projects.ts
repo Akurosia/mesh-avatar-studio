@@ -10,6 +10,9 @@ import type { LocalProject, LocalProjectEntry } from '../project-types';
 import { decodeVariants, JobError, projectJob, runTool, variantState, VARIANTS, type Runner } from './project-jobs';
 
 const SAMPLE = 'sample-miko-qipao';
+const LOCAL_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0', '::1'];
+export const studioAllowedHosts = (value = process.env.STUDIO_ALLOWED_HOSTS ?? '') =>
+  [...new Set(value.split(',').map(host => host.trim().toLowerCase().replace(/\.$/, '')).filter(Boolean))];
 const displayPath = (path: string) => path === homedir() ? '~' : path.startsWith(`${homedir()}${sep}`) ? `~${path.slice(homedir().length)}` : path;
 const safeName = /^[A-Za-z0-9._-]+$/;
 class HttpError extends Error { constructor(public status: number, message: string) { super(message); } }
@@ -33,7 +36,7 @@ export function revealFolder(path: string): Promise<void> {
   const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
   return new Promise((done, reject) => execFile(command, [path], error => error ? reject(error) : done()));
 }
-export function localProjectMiddleware(root: string, reveal = revealFolder, runner: Runner = runTool) {
+export function localProjectMiddleware(root: string, reveal = revealFolder, runner: Runner = runTool, allowedHosts = studioAllowedHosts()) {
   root = resolve(root);
   const base = resolve(root, 'projects'), sample = resolve(root, 'samples/miko-qipao');
   const saving = new Set<string>();
@@ -92,13 +95,17 @@ export function localProjectMiddleware(root: string, reveal = revealFolder, runn
     const json = (status: number, value: unknown) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(value)); };
     let errorPath = 'projects';
     try {
-      // Reject cross-origin browser requests, including writes triggered by another website.
-      if (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`) throw new HttpError(403, 'Use the local studio origin.');
       const authority = req.headers.host ?? '';
-      const host = authority.startsWith('[') ? authority.slice(1, authority.indexOf(']')) : authority.split(':')[0];
+      const host = (authority.startsWith('[') ? authority.slice(1, authority.indexOf(']')) : authority.split(':')[0]).toLowerCase().replace(/\.$/, '');
+      // Reject cross-origin browser requests, including writes triggered by another website.
+      if (req.headers.origin) {
+        let origin: URL;
+        try { origin = new URL(req.headers.origin); } catch { throw new HttpError(403, 'Use the studio origin.'); }
+        if (!['http:', 'https:'].includes(origin.protocol) || origin.host.toLowerCase() !== authority.toLowerCase()) throw new HttpError(403, 'Use the studio origin.');
+      }
       // Docker users commonly open the published port through 0.0.0.0. It is a local
       // non-routable address, just like the loopback names accepted by the desktop setup.
-      if (!['127.0.0.1', 'localhost', '0.0.0.0', '::1'].includes(host)) throw new HttpError(403, 'Local requests only.');
+      if (![...LOCAL_HOSTS, ...allowedHosts].includes(host)) throw new HttpError(403, 'Host is not allowed. Set STUDIO_ALLOWED_HOSTS for trusted reverse-proxy domains.');
       const raw = req.url.split('?')[0].slice('/__studio/'.length).split('/');
       const parts = raw.map(part => {
         let value; try { value = decodeURIComponent(part); } catch { throw new HttpError(400, 'Invalid path encoding.'); }
@@ -205,7 +212,7 @@ export function localProjectMiddleware(root: string, reveal = revealFolder, runn
     }
   };
 }
-export function localProjectsPlugin(root: string): Plugin {
+export function localProjectsPlugin(root: string, allowedHosts = studioAllowedHosts()): Plugin {
   const base = resolve(root, 'projects');
   const variantProject = (file: string) => {
     const parts = relative(base, file).split(sep);
@@ -217,7 +224,7 @@ export function localProjectsPlugin(root: string): Plugin {
     // Configure this before Vite starts watching the root, not only after add().
     return { server: { watch: { ignored: [(file: string) => inside(base, file) && relative(base, file).split(sep).some(part => part.startsWith('.'))] } } };
   }, configureServer(server) {
-    server.middlewares.use(localProjectMiddleware(root));
+    server.middlewares.use(localProjectMiddleware(root, revealFolder, runTool, allowedHosts));
     const timers = new Map<string, ReturnType<typeof setTimeout>>();
     const changed = (file: string) => {
       const name = variantProject(file);

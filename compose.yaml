@@ -3,6 +3,8 @@ services:
     image: ghcr.io/akurosia/mesh-avatar-studio:latest
     pull_policy: always
     init: true
+    environment:
+      STUDIO_ALLOWED_HOSTS: "${STUDIO_ALLOWED_HOSTS:-}"
     ports:
       - "127.0.0.1:${STUDIO_PORT:-5173}:5173"
     volumes:

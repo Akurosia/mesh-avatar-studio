@@ -45,6 +45,16 @@ runs the newest image.
 The Compose port is deliberately bound to localhost because the editor can modify files in
 the mounted projects directory.
 
+For a reverse proxy, allow its public hostname (without a scheme or path) in `.env`:
+
+```dotenv
+STUDIO_ALLOWED_HOSTS=mesh.example.com
+```
+
+Multiple hostnames can be separated with commas. Recreate the service after changing the
+setting with `docker compose up -d --force-recreate`. The reverse proxy must preserve the
+original `Host` header and forward WebSocket upgrades for live and stream views.
+
 ### Using Windows
 
 Use `git clone` to download the repository when possible. If you use a ZIP, open its
