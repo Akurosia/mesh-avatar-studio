@@ -94,8 +94,11 @@ export function localProjectMiddleware(root: string, reveal = revealFolder, runn
     try {
       // Reject cross-origin browser requests, including writes triggered by another website.
       if (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`) throw new HttpError(403, 'Use the local studio origin.');
-      const host = req.headers.host?.split(':')[0];
-      if (host !== '127.0.0.1' && host !== 'localhost') throw new HttpError(403, 'Local requests only.');
+      const authority = req.headers.host ?? '';
+      const host = authority.startsWith('[') ? authority.slice(1, authority.indexOf(']')) : authority.split(':')[0];
+      // Docker users commonly open the published port through 0.0.0.0. It is a local
+      // non-routable address, just like the loopback names accepted by the desktop setup.
+      if (!['127.0.0.1', 'localhost', '0.0.0.0', '::1'].includes(host)) throw new HttpError(403, 'Local requests only.');
       const raw = req.url.split('?')[0].slice('/__studio/'.length).split('/');
       const parts = raw.map(part => {
         let value; try { value = decodeURIComponent(part); } catch { throw new HttpError(400, 'Invalid path encoding.'); }

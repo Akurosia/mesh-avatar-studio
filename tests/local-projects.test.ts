@@ -64,6 +64,12 @@ test('lists eligible projects and the read-only installed sample, and serves pro
   expect((await call('/__studio/projects/nova/rig.json.bak')).status).toBe(404);
 });
 
+test('accepts Docker and IPv6 local addresses while rejecting non-local hosts', async () => {
+  expect((await call('/__studio/projects', 'GET', undefined, { host: '0.0.0.0:5173', origin: 'http://0.0.0.0:5173' })).status).toBe(200);
+  expect((await call('/__studio/projects', 'GET', undefined, { host: '[::1]:5173', origin: 'http://[::1]:5173' })).status).toBe(200);
+  expect((await call('/__studio/projects', 'GET', undefined, { host: 'example.invalid' })).status).toBe(403);
+});
+
 test('rejects raw and encoded traversal, absolute paths, malformed encoding and symlink escapes', async () => {
   for (const tail of ['../rig.json', './rig.json', '%2e%2e/rig.json', '%2Fprivate/rig.json', 'nova%2F..%2Fother/rig.json', 'nova%5Cother/rig.json', '%252e%252e/rig.json', 'C%3A/rig.json', '%/rig.json', 'nova/built/../../rig.json']) {
     expect((await call(`/__studio/projects/${tail}`)).status, tail).toBe(400);
