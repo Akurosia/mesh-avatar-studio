@@ -1,0 +1,15 @@
+services:
+  studio:
+    build:
+      context: .
+    image: mesh-avatar-studio:local
+    init: true
+    ports:
+      - "127.0.0.1:${STUDIO_PORT:-5173}:5173"
+    volumes:
+      - type: bind
+        source: ./projects
+        target: /app/projects
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true

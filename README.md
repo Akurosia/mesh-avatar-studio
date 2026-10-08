@@ -22,6 +22,24 @@ the bundled sample, Miko in a qipao. Pick a part on the left, drag its dots on t
 watch the preview on the right. The sample is read-only; when you change it, choose
 **Copy and keep editing** to continue in your own copy.
 
+### Using Docker Compose
+
+Docker Compose runs the complete local editor, including the Python tools used to rebuild
+avatar layers. Create the persistent project directory and start the studio:
+
+```sh
+mkdir projects
+docker compose up --build -d
+```
+
+Open `http://127.0.0.1:5173/`. Projects are stored in the host's `projects/` directory and
+remain there when the container is replaced. To use another host port, set `STUDIO_PORT`
+(for example, `STUDIO_PORT=8080 docker compose up --build -d`). Stop it with
+`docker compose down`.
+
+The Compose port is deliberately bound to localhost because the editor can modify files in
+the mounted projects directory.
+
 ### Using Windows
 
 Use `git clone` to download the repository when possible. If you use a ZIP, open its

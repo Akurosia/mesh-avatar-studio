@@ -1,0 +1,13 @@
+.git
+.github
+node_modules
+.npm-cache
+dist
+projects
+work
+test-results
+playwright-report
+docs/screenshots
+samples/**/review
+*.log
+.DS_Store
