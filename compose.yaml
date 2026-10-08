@@ -1,8 +1,7 @@
 services:
   studio:
-    build:
-      context: .
-    image: mesh-avatar-studio:local
+    image: ghcr.io/akurosia/mesh-avatar-studio:latest
+    pull_policy: always
     init: true
     ports:
       - "127.0.0.1:${STUDIO_PORT:-5173}:5173"
